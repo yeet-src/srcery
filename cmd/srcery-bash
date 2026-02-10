@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 cd "$SRCERY_ROOT"
 
+set -euo pipefail
+export SHELLOPTS
+
 die() {
 	>&2 echo "$@"
 	exit 1

@@ -1,5 +1,4 @@
 #!/usr/bin/env srcery-bash
-set -euo pipefail
 
 name="${1:?usage: @wt-remove NAME}"
 

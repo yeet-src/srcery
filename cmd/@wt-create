@@ -1,5 +1,4 @@
 #!/usr/bin/env srcery-bash
-set -euo pipefail
 
 repo="${1:?usage: @wt-create REPO}"
 repo_path="$YEET_SRC_ROOT/$repo"
