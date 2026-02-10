@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
+export PATH="$PATH:$SRCERY_ROOT/lib"
 cd "$SRCERY_ROOT"
 
 set -euo pipefail
 export SHELLOPTS
+
+export SRCERY_DATA="${SRCERY_DATA:-$SRCERY_ROOT/data}"
 
 die() {
 	>&2 echo "$@"

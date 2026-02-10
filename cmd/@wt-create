@@ -7,9 +7,18 @@ repo_path="$YEET_SRC_ROOT/$repo"
 
 id=$(head -c4 /dev/urandom | xxd -p)
 name="wt_${id}_${repo}"
-wt_path="$SRCERY_ROOT/data/worktrees/$name"
+wt_path="$SRCERY_DATA/worktrees/$name"
 
-mkdir -p data/worktrees
-git -C "$repo_path" worktree add "$wt_path" -b "wt_${id}"
+mkdir -p "$SRCERY_DATA/worktrees"
+git -C "$repo_path" worktree add -q "$wt_path" -b "wt_${id}"
 
 echo "$wt_path"
+
+# repo-defined hooks (make targets)
+if make -C "$wt_path" -n wt-init >/dev/null 2>&1; then
+	make -C "$wt_path" --no-print-directory wt-init >&2
+fi
+
+if make -C "$wt_path" -n wt-run >/dev/null 2>&1; then
+	@svc-start "$wt_path" "$repo" make --no-print-directory wt-run >&2
+fi

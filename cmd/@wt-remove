@@ -9,5 +9,15 @@ name="${name##*/}"
 repo="${name#wt_*_}"
 [[ "$repo" != "$name" ]] || { @wt-list >&2; die "can't parse repo from name: $name"; }
 
-git -C "$YEET_SRC_ROOT/$repo" worktree remove "$SRCERY_ROOT/data/worktrees/$name" 2>&1 \
+# stop any services running in this worktree
+wt_path="$SRCERY_DATA/worktrees/$name"
+svc_root="$SRCERY_DATA/svcs"
+if [[ -d "$svc_root" ]]; then
+	for svc_dir in "$svc_root"/*/; do
+		[[ -d "$svc_dir" ]] || continue
+		[[ "$(<"$svc_dir/worktree")" == "$wt_path" ]] && @svc-stop "$(basename "$svc_dir")"
+	done
+fi
+
+git -C "$YEET_SRC_ROOT/$repo" worktree remove --force "$SRCERY_DATA/worktrees/$name" 2>&1 \
   || { @wt-list >&2; die "failed to remove worktree: $name"; }

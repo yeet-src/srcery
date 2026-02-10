@@ -17,20 +17,32 @@ scripts that call into real code in those other repos.
   `$SRCERY_ROOT`, sets `set -euo pipefail` (propagated via `SHELLOPTS`),
   exports shared helpers (`die`), then `exec bash "$@"`
 - `completions/` — zsh completion files (`_@command` with `#compdef` headers)
-- `data/` — gitignored runtime data (e.g. worktrees)
+- `data/` — gitignored runtime data (e.g. worktrees, svcs); path overridable via `SRCERY_DATA`
+- `test/` — test scripts
 
 # Env vars (set by `.envrc`)
 
 - `SRCERY_ROOT` — this project
 - `YEET_SRC_ROOT` — parent dir (org root with sibling repos)
+- `SRCERY_DATA` — data dir; defaults to `$SRCERY_ROOT/data` (set in `srcery-bash`)
 - `EXTRA_FPATH` — completions dir; picked up by user's zsh precmd hook
 
 # Commands
 
-- `@wt-create REPO` — create a git worktree in `data/worktrees/`
+- `@wt-create REPO` — create worktree, run repo-defined hooks, start services
 - `@wt-list [REPO]` — list worktrees, optionally filtered
-- `@wt-remove NAME` — remove a worktree; shows `@wt-list` on failure
+- `@wt-remove NAME` — stop services + remove worktree
+- `@svc-start WT NAME CMD...` — background CMD, store metadata in `data/svcs/<uuid>/`
+- `@svc-stop UUID` — kill process, clean up svc dir
+- `@svc-list [-w PAT] [-n PAT]` — list services; `-w` filters by worktree, `-n` by name
+- `@svc-logs UUID [out|err]` — `tail -f` service stdout or stderr
 - `@help` — print command reference
+
+# Repo hooks
+
+Repos define optional make targets that `@wt-create` calls:
+- `make wt-init` — build/setup (e.g. `cp -r node_modules`)
+- `make wt-run` — long-running service (run via `@svc-start`)
 
 # Shell style
 
@@ -39,10 +51,11 @@ scripts that call into real code in those other repos.
 - Prefer `[[ condition ]] || action` over `if` for single-line checks
 - `[[ ]]` not `[ ]`
 
-# Lint
+# Lint & Test
 
 - `make check_lint` — shellcheck all `cmd/` scripts (CI check)
 - `make lint` — shellcheck + auto-apply fixes
+- `make test` — run tests (`test/test-svc.sh`); operates entirely in tmpdir
 
 # Nix
 

@@ -1,0 +1,34 @@
+#!/usr/bin/env srcery-bash
+
+wt_filter=""
+name_filter=""
+
+while [[ $# -gt 0 ]]; do
+	case "$1" in
+		-w) wt_filter="${2:?-w requires a pattern}"; shift 2 ;;
+		-n) name_filter="${2:?-n requires a pattern}"; shift 2 ;;
+		*)  die "usage: @svc-list [-w worktree-pattern] [-n name-pattern]" ;;
+	esac
+done
+
+svc_root="$SRCERY_DATA/svcs"
+[[ -d "$svc_root" ]] || exit 0
+
+printf "%-10s %-8s %-40s %-15s %s\n" UUID STATUS WORKTREE NAME PID
+
+for svc_dir in "$svc_root"/*/; do
+	[[ -d "$svc_dir" ]] || continue
+
+	uuid=$(basename "$svc_dir")
+	wt=$(<"$svc_dir/worktree")
+	name=$(<"$svc_dir/name")
+	pid=$(<"$svc_dir/pid")
+
+	[[ -z "$wt_filter" ]]   || [[ "$wt" == *"$wt_filter"* ]]   || continue
+	[[ -z "$name_filter" ]] || [[ "$name" == *"$name_filter"* ]] || continue
+
+	status="dead"
+	kill -0 "$pid" 2>/dev/null && status="running"
+
+	printf "%-10s %-8s %-40s %-15s %s\n" "$uuid" "$status" "$wt" "$name" "$pid"
+done

@@ -1,8 +1,8 @@
 #!/usr/bin/env srcery-bash
 
-[[ -d data/worktrees ]] || exit 0
+[[ -d "$SRCERY_DATA/worktrees" ]] || exit 0
 
-for wt in data/worktrees/*/; do
+for wt in "$SRCERY_DATA"/worktrees/*/; do
   wt="${wt%/}"
   wt="${wt##*/}"
   [[ $# -eq 0 || "$wt" == *"_${1}" ]] && echo "$wt"

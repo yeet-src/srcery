@@ -1,0 +1,20 @@
+#!/usr/bin/env srcery-bash
+
+wt_path="${1:?usage: @svc-start WT_PATH NAME CMD...}"
+name="${2:?usage: @svc-start WT_PATH NAME CMD...}"
+shift 2
+[[ $# -gt 0 ]] || die "usage: @svc-start WT_PATH NAME CMD..."
+
+uuid=$(head -c4 /dev/urandom | xxd -p)
+svc_dir="$SRCERY_DATA/svcs/$uuid"
+mkdir -p "$svc_dir"
+
+echo "$wt_path" > "$svc_dir/worktree"
+echo "$name"    > "$svc_dir/name"
+
+# exec replaces subshell so $! is the real process PID
+(cd "$wt_path" && exec "$@") >"$svc_dir/out" 2>"$svc_dir/err" &
+echo $! > "$svc_dir/pid"
+disown
+
+echo "$uuid"

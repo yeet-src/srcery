@@ -1,0 +1,16 @@
+#!/usr/bin/env srcery-bash
+
+uuid="${1:?usage: @svc-stop UUID}"
+svc_dir="$SRCERY_DATA/svcs/$uuid"
+
+[[ -d "$svc_dir" ]] || die "no such service: $uuid"
+
+pid=$(<"$svc_dir/pid")
+if kill -0 "$pid" 2>/dev/null; then
+	kill "$pid"
+	echo "stopped $uuid (pid $pid)"
+else
+	echo "already dead (pid $pid), cleaning up"
+fi
+
+rm -rf "$svc_dir"

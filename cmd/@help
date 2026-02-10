@@ -2,7 +2,13 @@
 
 cat <<'EOF'
 Worktrees
-  @wt-create REPO       Create a worktree for REPO
+  @wt-create REPO       Create a worktree for REPO, setup & run
   @wt-list [REPO]       List worktrees, optionally filtered by REPO
-  @wt-remove NAME       Remove a worktree by name
+  @wt-remove NAME       Remove a worktree (stops its services)
+
+Services
+  @svc-start WT NAME CMD...   Start CMD as a named service for a worktree
+  @svc-stop UUID              Stop a service and clean up
+  @svc-list [-w PAT] [-n PAT] List services, filter by worktree/name
+  @svc-logs UUID [out|err]    Tail service stdout (default) or stderr
 EOF
