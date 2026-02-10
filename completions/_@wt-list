@@ -1,0 +1,4 @@
+#compdef @wt-list
+local -a repos
+repos=(${(f)"$(ls "$YEET_SRC_ROOT" 2>/dev/null)"})
+(( ${#repos} )) && _values "repo" $repos

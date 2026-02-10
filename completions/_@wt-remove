@@ -1,0 +1,4 @@
+#compdef @wt-remove
+local -a wts
+wts=(${(f)"$(ls "$SRCERY_ROOT/data/worktrees" 2>/dev/null)"})
+(( ${#wts} )) && _values "worktree" $wts

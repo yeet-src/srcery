@@ -1,0 +1,8 @@
+#!/usr/bin/env srcery-bash
+
+cat <<'EOF'
+Worktrees
+  @wt-create REPO       Create a worktree for REPO
+  @wt-list [REPO]       List worktrees, optionally filtered by REPO
+  @wt-remove NAME       Remove a worktree by name
+EOF

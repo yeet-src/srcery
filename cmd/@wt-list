@@ -1,0 +1,12 @@
+#!/usr/bin/env srcery-bash
+set -euo pipefail
+
+if [ ! -d data/worktrees ]; then
+  exit 0
+fi
+
+if [ $# -eq 0 ]; then
+  ls data/worktrees/
+else
+  ls data/worktrees/ | grep "_${1}$" || true
+fi

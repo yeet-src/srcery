@@ -1,0 +1,14 @@
+#!/usr/bin/env srcery-bash
+set -euo pipefail
+
+name="${1:?usage: @wt-remove NAME}"
+
+# strip path prefix if given
+name="${name##*/}"
+
+# parse wt_${id}_${repo}
+repo="${name#wt_*_}"
+[[ "$repo" != "$name" ]] || { @wt-list >&2; die "can't parse repo from name: $name"; }
+
+git -C "$YEET_SRC_ROOT/$repo" worktree remove "$SRCERY_ROOT/data/worktrees/$name" 2>&1 \
+  || { @wt-list >&2; die "failed to remove worktree: $name"; }

@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+cd "$SRCERY_ROOT"
+
+die() {
+	>&2 echo "$@"
+	exit 1
+}
+export -f die
+
+exec bash "$@"
