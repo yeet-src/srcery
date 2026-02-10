@@ -12,6 +12,9 @@ printf "  %s\n" "${worktrees[@]}"
 read -rp "continue? [y/N] " answer
 [[ "$answer" == [yY] ]] || die "aborted"
 
+i=0
 for wt in "${worktrees[@]}"; do
 	@wt-remove "$wt"
+	((i++))
+	echo "[$i/${#worktrees[@]}] Removed $wt"
 done

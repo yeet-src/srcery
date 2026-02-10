@@ -3,6 +3,7 @@
 [[ -d "$SRCERY_DATA/worktrees" ]] || exit 0
 
 for wt in "$SRCERY_DATA"/worktrees/*/; do
+  [[ -d "$wt" ]] || continue
   wt="${wt%/}"
   wt="${wt##*/}"
   [[ $# -eq 0 || "$wt" == *"_${1}" ]] && echo "$wt"
