@@ -29,6 +29,7 @@ scripts that call into real code in those other repos.
 
 # Commands
 
+- `@dev REPO` — create worktree + start claude as service + attach in tmux
 - `@wt-create REPO` — create worktree, run repo-defined hooks, start services
 - `@wt-list [REPO]` — list worktrees, optionally filtered
 - `@wt-remove NAME` — stop services + remove worktree

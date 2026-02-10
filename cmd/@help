@@ -1,6 +1,9 @@
 #!/usr/bin/env srcery-bash
 
 cat <<'EOF'
+Workflow
+  @dev REPO             Create worktree, start claude, attach
+
 Worktrees
   @wt-create REPO       Create a worktree for REPO, setup & run
   @wt-list [REPO]       List worktrees, optionally filtered by REPO

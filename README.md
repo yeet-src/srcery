@@ -14,6 +14,12 @@ cd yeet/srcery
 direnv allow
 ```
 
+## Quick start
+
+```
+@dev REPO   # create worktree, start claude, attach in tmux
+```
+
 ## Commands
 
 ### Worktrees

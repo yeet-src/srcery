@@ -1,0 +1,11 @@
+#!/usr/bin/env srcery-bash
+
+repo="${1:?usage: @dev REPO}"
+
+wt_path=$(@wt-create "$repo")
+wt_name=$(basename "$wt_path")
+
+@svc-start "$wt_path" claude claude >&2
+
+win="${wt_name}/claude"
+exec srcery_tmux attach-session -t "=srcery:=$win"
