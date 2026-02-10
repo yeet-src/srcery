@@ -32,6 +32,7 @@ scripts that call into real code in those other repos.
 - `@wt-create REPO` — create worktree, run repo-defined hooks, start services
 - `@wt-list [REPO]` — list worktrees, optionally filtered
 - `@wt-remove NAME` — stop services + remove worktree
+- `@wt-clear` — remove all worktrees (y/n confirmation)
 - `@svc-start WT NAME CMD...` — background CMD, store metadata in `data/svcs/<uuid>/`
 - `@svc-stop UUID` — kill process, clean up svc dir
 - `@svc-list [-w PAT] [-n PAT]` — list services; `-w` filters by worktree, `-n` by name
@@ -41,8 +42,8 @@ scripts that call into real code in those other repos.
 # Repo hooks
 
 Repos define optional make targets that `@wt-create` calls:
-- `make wt-init` — build/setup (e.g. `cp -r node_modules`)
-- `make wt-run` — long-running service (run via `@svc-start`)
+- `make wt_init` — build/setup (e.g. `cp -r node_modules`)
+- `make wt_run` — long-running service (run via `@svc-start`)
 
 # Shell style
 

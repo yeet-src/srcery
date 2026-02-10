@@ -13,6 +13,7 @@
       in {
         devShells.default = pkgs.mkShell {
           packages = with pkgs; [
+            coreutils
             poetry
             shellcheck
           ];

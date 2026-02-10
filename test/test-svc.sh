@@ -129,20 +129,20 @@ echo "--- @wt-create with make hooks ---"
 
 setup_repo hookrepo
 cat > "$YEET_SRC_ROOT/hookrepo/Makefile" <<'MAKEFILE'
-.PHONY: wt-init wt-run
-wt-init:
+.PHONY: wt_init wt_run
+wt_init:
 	touch .initialized
-wt-run:
+wt_run:
 	sleep 999
 MAKEFILE
 git -C "$YEET_SRC_ROOT/hookrepo" add -A
 git -C "$YEET_SRC_ROOT/hookrepo" commit -q -m "add Makefile"
 
-t "wt-create runs wt-init"
+t "wt-create runs wt_init"
 wt_path=$(@wt-create hookrepo)
 assert test -f "$wt_path/.initialized"
 
-t "wt-create starts wt-run as a service"
+t "wt-create starts wt_run as a service"
 list=$(@svc-list -w "$wt_path")
 assert contains "$list" "running"
 
