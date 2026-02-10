@@ -15,6 +15,6 @@ read -rp "continue? [y/N] " answer
 i=0
 for wt in "${worktrees[@]}"; do
 	@wt-remove "$wt"
-	((i++))
+	((++i))
 	echo "[$i/${#worktrees[@]}] Removed $wt"
 done

@@ -21,10 +21,11 @@ log "$wt_path"
 echo "$wt_path"
 
 # repo-defined hooks (make targets)
-if make -C "$wt_path" -n wt_init >/dev/null 2>&1; then
-	make -C "$wt_path" --no-print-directory wt_init >&2
+# unset SHELLOPTS so make recipes get a clean shell
+if env -u SHELLOPTS make -C "$wt_path" -n wt_init >/dev/null 2>&1; then
+	env -u SHELLOPTS make -C "$wt_path" --no-print-directory wt_init >&2
 fi
 
-if make -C "$wt_path" -n wt_run >/dev/null 2>&1; then
-	@svc-start "$wt_path" "$repo" make --no-print-directory wt_run >&2
+if env -u SHELLOPTS make -C "$wt_path" -n wt_run >/dev/null 2>&1; then
+	env -u SHELLOPTS @svc-start "$wt_path" "$repo" make --no-print-directory wt_run >&2
 fi
