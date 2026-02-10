@@ -1,0 +1,4 @@
+#compdef @svc-list
+_arguments \
+	'-w[filter by worktree]:pattern:' \
+	'-n[filter by name]:pattern:'

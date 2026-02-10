@@ -13,4 +13,11 @@ die() {
 }
 export -f die
 
+export SRCERY_TMUX_SOCKET="${SRCERY_TMUX_SOCKET:-srcery}"
+
+srcery_tmux() {
+	command tmux -L "$SRCERY_TMUX_SOCKET" "$@"
+}
+export -f srcery_tmux
+
 exec bash "$@"

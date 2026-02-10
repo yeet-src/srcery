@@ -1,0 +1,5 @@
+#compdef @svc-stop
+local -a windows
+windows=(${(f)"$(tmux -L "${SRCERY_TMUX_SOCKET:-srcery}" list-windows -t '=srcery' -F '#{window_name}' 2>/dev/null)"})
+windows=(${windows:#_placeholder})
+(( ${#windows} )) && _values "service" $windows

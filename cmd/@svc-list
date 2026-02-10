@@ -11,24 +11,22 @@ while [[ $# -gt 0 ]]; do
 	esac
 done
 
-svc_root="$SRCERY_DATA/svcs"
-[[ -d "$svc_root" ]] || exit 0
+srcery_tmux has-session -t "=srcery" 2>/dev/null || exit 0
 
-printf "%-10s %-8s %-40s %-15s %s\n" UUID STATUS WORKTREE NAME PID
+printf "%-30s %-8s %s\n" WINDOW STATUS PID
 
-for svc_dir in "$svc_root"/*/; do
-	[[ -d "$svc_dir" ]] || continue
+srcery_tmux list-windows -t "=srcery" -F '#{window_name} #{pane_dead} #{pane_pid}' \
+| while read -r win pane_dead pane_pid; do
+	[[ "$win" == "_placeholder" ]] && continue
 
-	uuid=$(basename "$svc_dir")
-	wt=$(<"$svc_dir/worktree")
-	name=$(<"$svc_dir/name")
-	pid=$(<"$svc_dir/pid")
+	wt_name="${win%%/*}"
+	svc_name="${win#*/}"
 
-	[[ -z "$wt_filter" ]]   || [[ "$wt" == *"$wt_filter"* ]]   || continue
-	[[ -z "$name_filter" ]] || [[ "$name" == *"$name_filter"* ]] || continue
+	[[ -z "$wt_filter" ]]   || [[ "$wt_name" == *"$wt_filter"* ]]   || continue
+	[[ -z "$name_filter" ]] || [[ "$svc_name" == *"$name_filter"* ]] || continue
 
-	status="dead"
-	kill -0 "$pid" 2>/dev/null && status="running"
+	status="running"
+	[[ "$pane_dead" == "0" ]] || status="dead"
 
-	printf "%-10s %-8s %-40s %-15s %s\n" "$uuid" "$status" "$wt" "$name" "$pid"
+	printf "%-30s %-8s %s\n" "$win" "$status" "$pane_pid"
 done

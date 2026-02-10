@@ -16,6 +16,7 @@
             coreutils
             poetry
             shellcheck
+            tmux
           ];
         };
       }

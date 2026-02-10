@@ -10,12 +10,10 @@ repo="${name#wt_*_}"
 [[ "$repo" != "$name" ]] || { @wt-list >&2; die "can't parse repo from name: $name"; }
 
 # stop any services running in this worktree
-wt_path="$SRCERY_DATA/worktrees/$name"
-svc_root="$SRCERY_DATA/svcs"
-if [[ -d "$svc_root" ]]; then
-	for svc_dir in "$svc_root"/*/; do
-		[[ -d "$svc_dir" ]] || continue
-		[[ "$(<"$svc_dir/worktree")" == "$wt_path" ]] && @svc-stop "$(basename "$svc_dir")"
+if srcery_tmux has-session -t "=srcery" 2>/dev/null; then
+	srcery_tmux list-windows -t "=srcery" -F '#{window_name}' \
+	| while read -r win; do
+		[[ "$win" == "${name}/"* ]] && @svc-stop "$win"
 	done
 fi
 

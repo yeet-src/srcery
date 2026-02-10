@@ -15,9 +15,9 @@ scripts that call into real code in those other repos.
 - `cmd/` — executable commands, on `PATH` via direnv
 - `cmd/srcery-bash` — shebang target (`#!/usr/bin/env srcery-bash`); `cd`s to
   `$SRCERY_ROOT`, sets `set -euo pipefail` (propagated via `SHELLOPTS`),
-  exports shared helpers (`die`), then `exec bash "$@"`
+  exports shared helpers (`die`, `srcery_tmux`), then `exec bash "$@"`
 - `completions/` — zsh completion files (`_@command` with `#compdef` headers)
-- `data/` — gitignored runtime data (e.g. worktrees, svcs); path overridable via `SRCERY_DATA`
+- `data/` — gitignored runtime data (e.g. worktrees); path overridable via `SRCERY_DATA`
 - `test/` — test scripts
 
 # Env vars (set by `.envrc`)
@@ -33,11 +33,23 @@ scripts that call into real code in those other repos.
 - `@wt-list [REPO]` — list worktrees, optionally filtered
 - `@wt-remove NAME` — stop services + remove worktree
 - `@wt-clear` — remove all worktrees (y/n confirmation)
-- `@svc-start WT NAME CMD...` — background CMD, store metadata in `data/svcs/<uuid>/`
-- `@svc-stop UUID` — kill process, clean up svc dir
+- `@svc-start WT NAME CMD...` — start CMD in tmux window (`srcery` session)
+- `@svc-stop WINDOW` — kill tmux window (auto-unlinks from all sessions)
 - `@svc-list [-w PAT] [-n PAT]` — list services; `-w` filters by worktree, `-n` by name
-- `@svc-logs UUID [out|err]` — `tail -f` service stdout or stderr
 - `@help` — print command reference
+
+# tmux service architecture
+
+Services are tmux windows. Filtered views are sessions with linked windows.
+
+- Master session `srcery` — all service windows
+- `srcery/<wt_name>` — per-worktree session (linked windows)
+- `srcery/@<svc_name>` — per-name session (linked windows)
+- Window name format: `<wt_name>/<svc_name>` (e.g. `wt_a1b2_repo/run`)
+- `remain-on-exit on` globally on srcery tmux server — dead services stay inspectable
+- Dedicated tmux socket: `SRCERY_TMUX_SOCKET` (defaults to `srcery`, tests use `srcery-test`)
+- `srcery_tmux` wrapper always uses `-L $SRCERY_TMUX_SOCKET`
+- Attach: `tmux -L srcery attach -t srcery`
 
 # Repo hooks
 

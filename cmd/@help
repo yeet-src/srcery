@@ -7,9 +7,13 @@ Worktrees
   @wt-remove NAME       Remove a worktree (stops its services)
   @wt-clear             Remove all worktrees (with confirmation)
 
-Services
-  @svc-start WT NAME CMD...   Start CMD as a named service for a worktree
-  @svc-stop UUID              Stop a service and clean up
-  @svc-list [-w PAT] [-n PAT] List services, filter by worktree/name
-  @svc-logs UUID [out|err]    Tail service stdout (default) or stderr
+Services (tmux)
+  @svc-start WT NAME CMD...    Start CMD in tmux window (srcery session)
+  @svc-stop WINDOW             Stop service (kill tmux window)
+  @svc-list [-w PAT] [-n PAT]  List services, filter by worktree/name
+
+Sessions (dedicated tmux socket: -L srcery)
+  tmux -L srcery attach -t srcery             All services
+  tmux -L srcery attach -t 'srcery/<wt>'      One worktree's services
+  tmux -L srcery attach -t 'srcery/@<name>'   All services with a given name
 EOF

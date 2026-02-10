@@ -5,16 +5,43 @@ name="${2:?usage: @svc-start WT_PATH NAME CMD...}"
 shift 2
 [[ $# -gt 0 ]] || die "usage: @svc-start WT_PATH NAME CMD..."
 
-uuid=$(head -c4 /dev/urandom | xxd -p)
-svc_dir="$SRCERY_DATA/svcs/$uuid"
-mkdir -p "$svc_dir"
+wt_name=$(basename "$wt_path")
+win="${wt_name}/${name}"
 
-echo "$wt_path" > "$svc_dir/worktree"
-echo "$name"    > "$svc_dir/name"
+# reject duplicate
+if srcery_tmux list-windows -t "=srcery" -F '#{window_name}' 2>/dev/null \
+    | grep -qxF "$win"; then
+	die "service already exists: $win"
+fi
 
-# exec replaces subshell so $! is the real process PID
-(cd "$wt_path" && exec "$@") >"$svc_dir/out" 2>"$svc_dir/err" &
-echo $! > "$svc_dir/pid"
-disown
+# ensure master session
+srcery_tmux has-session -t "=srcery" 2>/dev/null \
+	|| srcery_tmux new-session -d -s srcery -n _placeholder 2>/dev/null \
+	|| true
 
-echo "$uuid"
+# remain-on-exit so dead services stay inspectable (global on our dedicated server)
+srcery_tmux set-option -gw remain-on-exit on
+
+# create service window
+srcery_tmux new-window -d -t "=srcery" -n "$win" -c "$wt_path" "$@"
+
+# kill placeholder if it exists
+srcery_tmux kill-window -t "=srcery:=_placeholder" 2>/dev/null || true
+
+# link to per-worktree session
+wt_session="srcery/${wt_name}"
+srcery_tmux has-session -t "=$wt_session" 2>/dev/null \
+	|| srcery_tmux new-session -d -s "$wt_session" -n _placeholder 2>/dev/null \
+	|| true
+srcery_tmux link-window -s "=srcery:=$win" -t "=$wt_session"
+srcery_tmux kill-window -t "=$wt_session:=_placeholder" 2>/dev/null || true
+
+# link to per-name session
+name_session="srcery/@${name}"
+srcery_tmux has-session -t "=$name_session" 2>/dev/null \
+	|| srcery_tmux new-session -d -s "$name_session" -n _placeholder 2>/dev/null \
+	|| true
+srcery_tmux link-window -s "=srcery:=$win" -t "=$name_session"
+srcery_tmux kill-window -t "=$name_session:=_placeholder" 2>/dev/null || true
+
+echo "$win"

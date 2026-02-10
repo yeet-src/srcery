@@ -6,10 +6,11 @@ export SRCERY_ROOT
 export PATH="$SRCERY_ROOT/cmd:$PATH"
 
 tmpdir=$(mktemp -d)
-trap 'rm -rf "$tmpdir"' EXIT
+trap 'tmux -L srcery-test kill-server 2>/dev/null || true; rm -rf "$tmpdir"' EXIT
 
 export SRCERY_DATA="$tmpdir/data"
 export YEET_SRC_ROOT="$tmpdir/repos"
+export SRCERY_TMUX_SOCKET="srcery-test"
 mkdir -p "$YEET_SRC_ROOT"
 
 pass=0
@@ -23,6 +24,11 @@ assert()     { if "$@"; then ok; else fail; fi; }
 assert_not() { if "$@"; then fail; else ok; fi; }
 contains()   { [[ "$1" == *"$2"* ]]; }
 
+# helper: query tmux
+tmux_windows() {
+	tmux -L srcery-test list-windows -t "=srcery" -F '#{window_name}' 2>/dev/null || true
+}
+
 # --- setup: create a git repo to make worktrees from ---
 setup_repo() {
 	local repo="$YEET_SRC_ROOT/$1"
@@ -34,70 +40,72 @@ setup_repo() {
 # ===================
 echo "--- @svc-start / @svc-stop ---"
 
-t "svc-start creates metadata files"
-uuid=$(@svc-start "$tmpdir" test-svc sleep 999)
-svc_dir="$SRCERY_DATA/svcs/$uuid"
-assert test -f "$svc_dir/worktree"
-assert test -f "$svc_dir/name"
-assert test -f "$svc_dir/pid"
-assert test -f "$svc_dir/out"
-assert test -f "$svc_dir/err"
+mkdir -p "$tmpdir/mywt"
 
-t "svc-start stores correct worktree"
-assert test "$(<"$svc_dir/worktree")" = "$tmpdir"
+t "svc-start returns window name"
+win=$(@svc-start "$tmpdir/mywt" test-svc sleep 999)
+assert test "$win" = "mywt/test-svc"
 
-t "svc-start stores correct name"
-assert test "$(<"$svc_dir/name")" = "test-svc"
+t "svc-start window appears in tmux"
+list=$(tmux_windows)
+assert contains "$list" "mywt/test-svc"
 
-t "svc-start process is alive"
-pid=$(<"$svc_dir/pid")
-assert kill -0 "$pid"
+t "svc-start process is running"
+dead=$(tmux -L srcery-test display-message -t "=srcery:=mywt/test-svc" -p '#{pane_dead}')
+assert test "$dead" = "0"
 
-t "svc-stop kills process and cleans up"
-@svc-stop "$uuid" >/dev/null
-sleep 0.1
-assert_not kill -0 "$pid" 2>/dev/null
-assert_not test -d "$svc_dir"
+t "svc-start creates per-worktree session"
+assert tmux -L srcery-test has-session -t "=srcery/mywt"
+
+t "svc-start creates per-name session"
+assert tmux -L srcery-test has-session -t "=srcery/@test-svc"
+
+t "svc-start rejects duplicate"
+assert_not @svc-start "$tmpdir/mywt" test-svc sleep 999 2>/dev/null
+
+t "svc-stop removes the window"
+@svc-stop "mywt/test-svc" >/dev/null
+list=$(tmux_windows)
+assert_not contains "$list" "mywt/test-svc"
 
 # ===================
 echo "--- @svc-list ---"
 
-uuid1=$(@svc-start "$tmpdir/a" svc-a sleep 999)
-uuid2=$(@svc-start "$tmpdir/b" svc-b sleep 999)
+mkdir -p "$tmpdir/wt_a" "$tmpdir/wt_b"
+win1=$(@svc-start "$tmpdir/wt_a" svc-a sleep 999)
+win2=$(@svc-start "$tmpdir/wt_b" svc-b sleep 999)
 
 t "svc-list shows both services"
 list=$(@svc-list)
-assert contains "$list" "$uuid1"
-assert contains "$list" "$uuid2"
+assert contains "$list" "wt_a/svc-a"
+assert contains "$list" "wt_b/svc-b"
 
 t "svc-list -n filters by name"
 list=$(@svc-list -n svc-a)
-assert contains "$list" "$uuid1"
-assert_not contains "$list" "$uuid2"
+assert contains "$list" "wt_a/svc-a"
+assert_not contains "$list" "wt_b/svc-b"
 
 t "svc-list -w filters by worktree"
-list=$(@svc-list -w "/b")
-assert_not contains "$list" "$uuid1"
-assert contains "$list" "$uuid2"
+list=$(@svc-list -w wt_b)
+assert_not contains "$list" "wt_a/svc-a"
+assert contains "$list" "wt_b/svc-b"
 
 # cleanup
-@svc-stop "$uuid1" >/dev/null
-@svc-stop "$uuid2" >/dev/null
+@svc-stop "$win1" >/dev/null
+@svc-stop "$win2" >/dev/null
 
 # ===================
-echo "--- @svc-logs ---"
+echo "--- @svc-list status ---"
 
-t "svc-logs captures stdout"
-uuid=$(@svc-start "$tmpdir" echo-svc bash -c 'echo hello-from-svc')
-sleep 0.3
-assert contains "$(<"$SRCERY_DATA/svcs/$uuid/out")" "hello-from-svc"
-@svc-stop "$uuid" >/dev/null 2>&1 || true
+mkdir -p "$tmpdir/deadwt"
+win=$(@svc-start "$tmpdir/deadwt" die-svc bash -c 'exit 1')
+sleep 0.5
 
-t "svc-logs captures stderr"
-uuid=$(@svc-start "$tmpdir" err-svc bash -c 'echo oops >&2')
-sleep 0.3
-assert contains "$(<"$SRCERY_DATA/svcs/$uuid/err")" "oops"
-@svc-stop "$uuid" >/dev/null 2>&1 || true
+t "svc-list shows dead status"
+list=$(@svc-list)
+assert contains "$list" "dead"
+
+@svc-stop "$win" >/dev/null
 
 # ===================
 echo "--- @wt-create / @wt-remove ---"
@@ -143,11 +151,14 @@ wt_path=$(@wt-create hookrepo)
 assert test -f "$wt_path/.initialized"
 
 t "wt-create starts wt_run as a service"
-list=$(@svc-list -w "$wt_path")
+wt_name=$(basename "$wt_path")
+list=$(@svc-list -w "$wt_name")
 assert contains "$list" "running"
 
+t "wt-create uses 'run' as service name"
+assert contains "$list" "${wt_name}/run"
+
 t "wt-remove stops the service"
-wt_name=$(basename "$wt_path")
 @wt-remove "$wt_name"
 sleep 0.2
 list=$(@svc-list 2>/dev/null || true)
