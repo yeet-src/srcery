@@ -122,6 +122,14 @@ wt_name=$(basename "$wt_path")
 list=$(@wt-list)
 assert contains "$list" "$wt_name"
 
+t "wt-list has header"
+assert contains "$list" "NAME"
+
+t "wt-list shows repo and branch columns"
+# tab-separated: NAME\tREPO\tBRANCH\tSERVICES
+row=$(echo "$list" | grep "$wt_name")
+assert contains "$row" "fakerepo"
+
 t "wt-list filters by repo"
 list=$(@wt-list fakerepo)
 assert contains "$list" "$wt_name"
@@ -162,6 +170,25 @@ wt_sha=$(git -C "$wt_path" rev-parse HEAD)
 assert test "$wt_sha" = "$base_sha"
 @wt-remove "$(basename "$wt_path")"
 
+t "wt-create reuses existing worktree"
+wt_path=$(@wt-create fakerepo reuse-me)
+wt_path2=$(@wt-create fakerepo reuse-me)
+assert test "$wt_path" = "$wt_path2"
+@wt-remove "$(basename "$wt_path")"
+
+t "wt-create checks out existing branch without -b"
+git -C "$YEET_SRC_ROOT/fakerepo" checkout -q -b existing-branch
+git -C "$YEET_SRC_ROOT/fakerepo" commit -q --allow-empty -m "existing"
+existing_sha=$(git -C "$YEET_SRC_ROOT/fakerepo" rev-parse existing-branch)
+git -C "$YEET_SRC_ROOT/fakerepo" checkout -q master
+
+wt_path=$(@wt-create fakerepo existing-branch)
+wt_sha=$(git -C "$wt_path" rev-parse HEAD)
+assert test "$wt_sha" = "$existing_sha"
+branch=$(git -C "$wt_path" branch --show-current)
+assert test "$branch" = "existing-branch"
+@wt-remove "$(basename "$wt_path")"
+
 # ===================
 echo "--- @wt-create with make hooks ---"
 
@@ -187,6 +214,11 @@ assert contains "$list" "running"
 
 t "wt-create uses 'run' as service name"
 assert contains "$list" "${wt_name}/run"
+
+t "wt-list shows running services"
+wt_list=$(@wt-list)
+wt_row=$(echo "$wt_list" | grep "$wt_name")
+assert contains "$wt_row" "run"
 
 t "wt-remove stops the service"
 @wt-remove "$wt_name"

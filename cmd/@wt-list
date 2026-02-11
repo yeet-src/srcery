@@ -4,19 +4,47 @@
 
 filter="${1:-}"
 
+# collect service windows if tmux server is running
+svc_windows=""
+if srcery_tmux has-session -t "=srcery" 2>/dev/null; then
+	svc_windows=$(srcery_tmux list-windows -t "=srcery" -F '#{window_name} #{pane_dead}')
+fi
+
+{
+printf "%s\t%s\t%s\t%s\n" NAME REPO BRANCH SERVICES
+
 for wt in "$SRCERY_DATA"/worktrees/*/; do
 	[[ -d "$wt" ]] || continue
 	name="${wt%/}"
 	name="${name##*/}"
 
-	if [[ -n "$filter" ]]; then
-		# derive repo from worktree's .git file
+	if [[ -f "$wt.git" ]]; then
 		gitdir=$(<"$wt.git")
 		gitdir="${gitdir#gitdir: }"
 		repo_path="${gitdir%/.git/worktrees/*}"
 		repo="${repo_path##*/}"
-		[[ "$repo" == "$filter" ]] || continue
+		branch=$(git -C "$wt" branch --show-current 2>/dev/null || echo "-")
+	else
+		repo="-"
+		branch="-"
 	fi
 
-	echo "$name"
+	[[ -z "$filter" ]] || [[ "$repo" == "$filter" ]] || continue
+
+	# gather services for this worktree
+	svcs=""
+	if [[ -n "$svc_windows" ]]; then
+		while read -r win dead; do
+			[[ "$win" == "${name}/"* ]] || continue
+			svc_name="${win#*/}"
+			if [[ "$dead" == "0" ]]; then
+				svcs="${svcs:+$svcs,}$svc_name"
+			else
+				svcs="${svcs:+$svcs,}${svc_name}(dead)"
+			fi
+		done <<< "$svc_windows"
+	fi
+
+	printf "%s\t%s\t%s\t%s\n" "$name" "$repo" "$branch" "${svcs:--}"
 done
+} | column -t -s $'\t'

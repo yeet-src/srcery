@@ -7,7 +7,7 @@ base="${3:-}"
 wt_path=$(@wt-create "$repo" "$branch" "$base")
 wt_name=$(basename "$wt_path")
 
-@svc-start "$wt_path" claude claude >&2
+@svc-start "$wt_path" claude zsh -c 'SHELL=bash claude --allow-dangerously-skip-permissions; exec zsh' >&2
 
 win="${wt_name}/claude"
 exec tmux -L "$SRCERY_TMUX_SOCKET" attach-session -t "=srcery:=$win"

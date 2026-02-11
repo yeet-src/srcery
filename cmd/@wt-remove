@@ -6,13 +6,7 @@ name="${1:?usage: @wt-remove NAME}"
 name="${name##*/}"
 
 wt_path="$SRCERY_DATA/worktrees/$name"
-[[ -f "$wt_path/.git" ]] || { @wt-list >&2; die "not a worktree: $name"; }
-
-# derive repo path from worktree's .git file
-# format: "gitdir: /path/to/repo/.git/worktrees/xxx"
-gitdir=$(<"$wt_path/.git")
-gitdir="${gitdir#gitdir: }"
-repo_path="${gitdir%/.git/worktrees/*}"
+[[ -d "$wt_path" ]] || die "no such worktree directory: $name"
 
 # stop any services running in this worktree
 if srcery_tmux has-session -t "=srcery" 2>/dev/null; then
@@ -22,5 +16,23 @@ if srcery_tmux has-session -t "=srcery" 2>/dev/null; then
 	done
 fi
 
-git -C "$repo_path" worktree remove --force "$wt_path" 2>&1 \
-  || { @wt-list >&2; die "failed to remove worktree: $name"; }
+if [[ -f "$wt_path/.git" ]]; then
+	# derive repo path and branch before removing
+	gitdir=$(<"$wt_path/.git")
+	gitdir="${gitdir#gitdir: }"
+	repo_path="${gitdir%/.git/worktrees/*}"
+	wt_branch=$(git -C "$wt_path" branch --show-current 2>/dev/null || true)
+
+	git -C "$repo_path" worktree remove --force "$wt_path" 2>&1 \
+	  || { @wt-list >&2; die "failed to remove worktree: $name"; }
+	# clean up untracked files git may have left behind
+	[[ ! -d "$wt_path" ]] || rm -rf "$wt_path"
+
+	# delete branch if it has no unmerged work (-d refuses otherwise)
+	if [[ -n "$wt_branch" ]]; then
+		git -C "$repo_path" branch -d "$wt_branch" 2>/dev/null || true
+	fi
+else
+	# stale directory (git worktree already removed) — clean up
+	rm -rf "$wt_path"
+fi

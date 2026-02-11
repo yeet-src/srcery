@@ -21,7 +21,24 @@ else
 fi
 
 mkdir -p "$SRCERY_DATA/worktrees"
-if [[ -n "$base" ]]; then
+
+if [[ -f "$wt_path/.git" ]]; then
+	# existing valid worktree — reuse it
+	log "reusing $wt_path"
+	echo "$wt_path"
+	exit 0
+fi
+
+# clean up stale directory if present
+[[ -d "$wt_path" ]] && rm -rf "$wt_path"
+
+# check if branch already exists
+if git -C "$repo_path" show-ref --verify --quiet "refs/heads/$branch"; then
+	if [[ -n "$base" ]]; then
+		die "branch '$branch' already exists; BASE arg not supported for existing branches"
+	fi
+	git -C "$repo_path" worktree add -q "$wt_path" "$branch"
+elif [[ -n "$base" ]]; then
 	git -C "$repo_path" worktree add -q "$wt_path" -b "$branch" "$base"
 else
 	git -C "$repo_path" worktree add -q "$wt_path" -b "$branch"

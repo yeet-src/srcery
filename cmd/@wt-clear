@@ -1,14 +1,16 @@
 #!/usr/bin/env srcery-bash
 
 worktrees=()
-while IFS= read -r wt; do
-	[[ -n "$wt" ]] && worktrees+=("$wt")
+first=true
+while read -r name _rest; do
+	$first && { first=false; continue; }  # skip header
+	[[ -n "$name" ]] && worktrees+=("$name")
 done < <(@wt-list)
 
 [[ ${#worktrees[@]} -gt 0 ]] || { echo "no worktrees"; exit 0; }
 
 echo "will remove ${#worktrees[@]} worktree(s):"
-printf "  %s\n" "${worktrees[@]}"
+@wt-list >&2
 read -rp "continue? [y/N] " answer
 [[ "$answer" == [yY] ]] || die "aborted"
 
