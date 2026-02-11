@@ -4,7 +4,7 @@ worktrees=()
 first=true
 while read -r name _rest; do
 	$first && { first=false; continue; }  # skip header
-	[[ -n "$name" ]] && worktrees+=("$name")
+	[[ -z "$name" ]] || worktrees+=("$name")
 done < <(@wt-list)
 
 [[ ${#worktrees[@]} -gt 0 ]] || { echo "no worktrees"; exit 0; }

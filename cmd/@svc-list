@@ -17,7 +17,7 @@ printf "%-30s %-8s %s\n" WINDOW STATUS PID
 
 srcery_tmux list-windows -t "=srcery" -F '#{window_name} #{pane_dead} #{pane_pid}' \
 | while read -r win pane_dead pane_pid; do
-	[[ "$win" == "_placeholder" ]] && continue
+	[[ "$win" != "_placeholder" ]] || continue
 
 	wt_name="${win%%/*}"
 	svc_name="${win#*/}"

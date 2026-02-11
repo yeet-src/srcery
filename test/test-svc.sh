@@ -141,6 +141,32 @@ t "wt-remove removes the worktree"
 assert_not test -d "$wt_path"
 
 # ===================
+echo "--- @wt-remove with sibling services (regression) ---"
+# Bug: [[ test ]] && action in piped while loop returns exit 1 when
+# no windows match, killing the script via set -e + pipefail.
+
+setup_repo regr_repo
+
+wt_a=$(@wt-create regr_repo regr-has-svc)
+wt_b=$(@wt-create regr_repo regr-no-svc)
+name_a=$(basename "$wt_a")
+name_b=$(basename "$wt_b")
+
+@svc-start "$wt_a" some-svc sleep 999 >/dev/null
+
+t "wt-remove succeeds when sibling worktree has services"
+@wt-remove "$name_b"
+assert_not test -d "$wt_b"
+
+t "sibling worktree still exists"
+assert test -d "$wt_a"
+
+t "wt-clear removes all remaining worktrees"
+echo "y" | @wt-clear >/dev/null 2>&1
+list=$(@wt-list)
+assert_not contains "$list" "$name_a"
+
+# ===================
 echo "--- @wt-create with branch name ---"
 
 t "wt-create REPO BRANCH names the branch and worktree"
