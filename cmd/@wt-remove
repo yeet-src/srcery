@@ -5,9 +5,14 @@ name="${1:?usage: @wt-remove NAME}"
 # strip path prefix if given
 name="${name##*/}"
 
-# parse wt_${id}_${repo}
-repo="${name#wt_*_}"
-[[ "$repo" != "$name" ]] || { @wt-list >&2; die "can't parse repo from name: $name"; }
+wt_path="$SRCERY_DATA/worktrees/$name"
+[[ -f "$wt_path/.git" ]] || { @wt-list >&2; die "not a worktree: $name"; }
+
+# derive repo path from worktree's .git file
+# format: "gitdir: /path/to/repo/.git/worktrees/xxx"
+gitdir=$(<"$wt_path/.git")
+gitdir="${gitdir#gitdir: }"
+repo_path="${gitdir%/.git/worktrees/*}"
 
 # stop any services running in this worktree
 if srcery_tmux has-session -t "=srcery" 2>/dev/null; then
@@ -17,5 +22,5 @@ if srcery_tmux has-session -t "=srcery" 2>/dev/null; then
 	done
 fi
 
-git -C "$YEET_SRC_ROOT/$repo" worktree remove --force "$SRCERY_DATA/worktrees/$name" 2>&1 \
+git -C "$repo_path" worktree remove --force "$wt_path" 2>&1 \
   || { @wt-list >&2; die "failed to remove worktree: $name"; }

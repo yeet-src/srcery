@@ -133,33 +133,34 @@ t "wt-remove removes the worktree"
 assert_not test -d "$wt_path"
 
 # ===================
-echo "--- @wt-create with branch ---"
+echo "--- @wt-create with branch name ---"
 
-git -C "$YEET_SRC_ROOT/fakerepo" checkout -q -b test-branch
-git -C "$YEET_SRC_ROOT/fakerepo" commit -q --allow-empty -m "branch commit"
-branch_sha=$(git -C "$YEET_SRC_ROOT/fakerepo" rev-parse test-branch)
-git -C "$YEET_SRC_ROOT/fakerepo" checkout -q master
-
-t "wt-create with branch starts from that branch"
-wt_path=$(@wt-create fakerepo test-branch)
-wt_sha=$(git -C "$wt_path" rev-parse HEAD)
-assert test "$wt_sha" = "$branch_sha"
-
+t "wt-create REPO BRANCH names the branch and worktree"
+wt_path=$(@wt-create fakerepo my-feature)
 wt_name=$(basename "$wt_path")
+assert test "$wt_name" = "my-feature"
+branch=$(git -C "$wt_path" branch --show-current)
+assert test "$branch" = "my-feature"
 @wt-remove "$wt_name"
 
-t "wt-create with branch containing /"
-git -C "$YEET_SRC_ROOT/fakerepo" checkout -q -b feature/with-slash
-git -C "$YEET_SRC_ROOT/fakerepo" commit -q --allow-empty -m "slash commit"
-slash_sha=$(git -C "$YEET_SRC_ROOT/fakerepo" rev-parse feature/with-slash)
+t "wt-create REPO BRANCH with / sanitizes dir name"
+wt_path=$(@wt-create fakerepo feat/slash-test)
+wt_name=$(basename "$wt_path")
+assert test "$wt_name" = "feat-slash-test"
+branch=$(git -C "$wt_path" branch --show-current)
+assert test "$branch" = "feat/slash-test"
+@wt-remove "$wt_name"
+
+t "wt-create REPO BRANCH BASE starts from base"
+git -C "$YEET_SRC_ROOT/fakerepo" checkout -q -b base-branch
+git -C "$YEET_SRC_ROOT/fakerepo" commit -q --allow-empty -m "base commit"
+base_sha=$(git -C "$YEET_SRC_ROOT/fakerepo" rev-parse base-branch)
 git -C "$YEET_SRC_ROOT/fakerepo" checkout -q master
 
-wt_path=$(@wt-create fakerepo feature/with-slash)
+wt_path=$(@wt-create fakerepo from-base base-branch)
 wt_sha=$(git -C "$wt_path" rev-parse HEAD)
-assert test "$wt_sha" = "$slash_sha"
-
-wt_name=$(basename "$wt_path")
-@wt-remove "$wt_name"
+assert test "$wt_sha" = "$base_sha"
+@wt-remove "$(basename "$wt_path")"
 
 # ===================
 echo "--- @wt-create with make hooks ---"

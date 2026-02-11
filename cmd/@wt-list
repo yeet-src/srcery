@@ -2,9 +2,21 @@
 
 [[ -d "$SRCERY_DATA/worktrees" ]] || exit 0
 
+filter="${1:-}"
+
 for wt in "$SRCERY_DATA"/worktrees/*/; do
-  [[ -d "$wt" ]] || continue
-  wt="${wt%/}"
-  wt="${wt##*/}"
-  [[ $# -eq 0 || "$wt" == *"_${1}" ]] && echo "$wt"
+	[[ -d "$wt" ]] || continue
+	name="${wt%/}"
+	name="${name##*/}"
+
+	if [[ -n "$filter" ]]; then
+		# derive repo from worktree's .git file
+		gitdir=$(<"$wt.git")
+		gitdir="${gitdir#gitdir: }"
+		repo_path="${gitdir%/.git/worktrees/*}"
+		repo="${repo_path##*/}"
+		[[ "$repo" == "$filter" ]] || continue
+	fi
+
+	echo "$name"
 done

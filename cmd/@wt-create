@@ -1,25 +1,30 @@
 #!/usr/bin/env srcery-bash
 
-repo="${1:?usage: @wt-create REPO [BRANCH]}"
+repo="${1:?usage: @wt-create REPO [BRANCH [BASE]]}"
 branch="${2:-}"
+base="${3:-}"
 repo_path="$YEET_SRC_ROOT/$repo"
 
 [[ -d "$repo_path/.git" ]] || die "$repo_path is not a git repo"
 
-base_branch=$(git -C "$repo_path" branch --show-current)
 log() { echo "${*//$HOME/\~}" >&2; }
 
-log "base: ${base_branch:-detached HEAD}"
-
-id=$(head -c4 /dev/urandom | xxd -p)
-name="wt_${id}_${repo}"
-wt_path="$SRCERY_DATA/worktrees/$name"
+if [[ -n "$branch" ]]; then
+	# user-chosen name; sanitize / for directory name
+	name="${branch//\//-}"
+	wt_path="$SRCERY_DATA/worktrees/$name"
+else
+	id=$(head -c4 /dev/urandom | xxd -p)
+	branch="wt_${id}"
+	name="wt_${id}_${repo}"
+	wt_path="$SRCERY_DATA/worktrees/$name"
+fi
 
 mkdir -p "$SRCERY_DATA/worktrees"
-if [[ -n "$branch" ]]; then
-	git -C "$repo_path" worktree add -q "$wt_path" -b "wt_${id}" "$branch"
+if [[ -n "$base" ]]; then
+	git -C "$repo_path" worktree add -q "$wt_path" -b "$branch" "$base"
 else
-	git -C "$repo_path" worktree add -q "$wt_path" -b "wt_${id}"
+	git -C "$repo_path" worktree add -q "$wt_path" -b "$branch"
 fi
 
 log "$wt_path"
