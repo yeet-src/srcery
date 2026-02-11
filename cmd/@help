@@ -15,8 +15,9 @@ Services (tmux)
   @svc-stop WINDOW             Stop service (kill tmux window)
   @svc-list [-w PAT] [-n PAT]  List services, filter by worktree/name
 
-Sessions (dedicated tmux socket: -L srcery)
-  tmux -L srcery attach -t srcery             All services
-  tmux -L srcery attach -t 'srcery/<wt>'      One worktree's services
-  tmux -L srcery attach -t 'srcery/@<name>'   All services with a given name
+Sessions
+  @attach                  Attach to all services
+  @attach <wt>             Attach to one worktree's services
+  @attach @<name>          Attach to all services with a given name
+  (underlying: tmux -L srcery attach-session -t '=srcery[/filter]')
 EOF

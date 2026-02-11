@@ -37,6 +37,7 @@ scripts that call into real code in those other repos.
 - `@svc-start WT NAME CMD...` — start CMD in tmux window (`srcery` session)
 - `@svc-stop WINDOW` — kill tmux window (auto-unlinks from all sessions)
 - `@svc-list [-w PAT] [-n PAT]` — list services; `-w` filters by worktree, `-n` by name
+- `@attach [TARGET]` — attach to tmux session (no arg=all, `<wt>`=worktree, `@<name>`=by name)
 - `@help` — print command reference
 
 # tmux service architecture
@@ -50,7 +51,7 @@ Services are tmux windows. Filtered views are sessions with linked windows.
 - `remain-on-exit on` globally on srcery tmux server — dead services stay inspectable
 - Dedicated tmux socket: `SRCERY_TMUX_SOCKET` (defaults to `srcery`, tests use `srcery-test`)
 - `srcery_tmux` wrapper always uses `-L $SRCERY_TMUX_SOCKET`
-- Attach: `tmux -L srcery attach -t srcery`
+- Attach: `@attach` (or raw: `tmux -L srcery attach -t srcery`)
 
 # Repo hooks
 

@@ -1,0 +1,12 @@
+#!/usr/bin/env srcery-bash
+
+# usage: @attach [TARGET]
+#   @attach            all services (master session)
+#   @attach <wt>       one worktree's services
+#   @attach @<name>    all services with a given name
+# underlying: tmux -L srcery attach-session -t <session>
+
+target="srcery"
+[[ $# -gt 0 ]] && target="srcery/${1}"
+
+exec tmux -L "$SRCERY_TMUX_SOCKET" attach-session -t "=$target"

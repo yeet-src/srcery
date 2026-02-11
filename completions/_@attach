@@ -1,0 +1,10 @@
+#compdef @attach
+local -a targets
+local -a windows
+windows=(${(f)"$(tmux -L "${SRCERY_TMUX_SOCKET:-srcery}" list-windows -t '=srcery' -F '#{window_name}' 2>/dev/null)"})
+windows=(${windows:#_placeholder})
+# worktree names (unique prefixes before /)
+targets=(${(u)windows%%/*})
+# @<name> service names (unique suffixes after /)
+targets+=("${(u)windows[@]/#*\//@}")
+(( ${#targets} )) && _values "target" $targets

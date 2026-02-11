@@ -8,4 +8,4 @@ wt_name=$(basename "$wt_path")
 @svc-start "$wt_path" claude claude >&2
 
 win="${wt_name}/claude"
-exec srcery_tmux attach-session -t "=srcery:=$win"
+exec tmux -L "$SRCERY_TMUX_SOCKET" attach-session -t "=srcery:=$win"
