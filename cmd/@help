@@ -2,10 +2,10 @@
 
 cat <<'EOF'
 Workflow
-  @dev REPO             Create worktree, start claude, attach
+  @dev REPO [BRANCH]    Create worktree, start claude, attach
 
 Worktrees
-  @wt-create REPO       Create a worktree for REPO, setup & run
+  @wt-create REPO [BRANCH]  Create a worktree for REPO, setup & run
   @wt-list [REPO]       List worktrees, optionally filtered by REPO
   @wt-remove NAME       Remove a worktree (stops its services)
   @wt-clear             Remove all worktrees (with confirmation)

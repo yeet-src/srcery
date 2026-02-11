@@ -1,6 +1,7 @@
 #!/usr/bin/env srcery-bash
 
-repo="${1:?usage: @wt-create REPO}"
+repo="${1:?usage: @wt-create REPO [BRANCH]}"
+branch="${2:-}"
 repo_path="$YEET_SRC_ROOT/$repo"
 
 [[ -d "$repo_path/.git" ]] || die "$repo_path is not a git repo"
@@ -15,7 +16,11 @@ name="wt_${id}_${repo}"
 wt_path="$SRCERY_DATA/worktrees/$name"
 
 mkdir -p "$SRCERY_DATA/worktrees"
-git -C "$repo_path" worktree add -q "$wt_path" -b "wt_${id}"
+if [[ -n "$branch" ]]; then
+	git -C "$repo_path" worktree add -q "$wt_path" -b "wt_${id}" "$branch"
+else
+	git -C "$repo_path" worktree add -q "$wt_path" -b "wt_${id}"
+fi
 
 log "$wt_path"
 echo "$wt_path"

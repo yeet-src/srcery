@@ -133,6 +133,35 @@ t "wt-remove removes the worktree"
 assert_not test -d "$wt_path"
 
 # ===================
+echo "--- @wt-create with branch ---"
+
+git -C "$YEET_SRC_ROOT/fakerepo" checkout -q -b test-branch
+git -C "$YEET_SRC_ROOT/fakerepo" commit -q --allow-empty -m "branch commit"
+branch_sha=$(git -C "$YEET_SRC_ROOT/fakerepo" rev-parse test-branch)
+git -C "$YEET_SRC_ROOT/fakerepo" checkout -q master
+
+t "wt-create with branch starts from that branch"
+wt_path=$(@wt-create fakerepo test-branch)
+wt_sha=$(git -C "$wt_path" rev-parse HEAD)
+assert test "$wt_sha" = "$branch_sha"
+
+wt_name=$(basename "$wt_path")
+@wt-remove "$wt_name"
+
+t "wt-create with branch containing /"
+git -C "$YEET_SRC_ROOT/fakerepo" checkout -q -b feature/with-slash
+git -C "$YEET_SRC_ROOT/fakerepo" commit -q --allow-empty -m "slash commit"
+slash_sha=$(git -C "$YEET_SRC_ROOT/fakerepo" rev-parse feature/with-slash)
+git -C "$YEET_SRC_ROOT/fakerepo" checkout -q master
+
+wt_path=$(@wt-create fakerepo feature/with-slash)
+wt_sha=$(git -C "$wt_path" rev-parse HEAD)
+assert test "$wt_sha" = "$slash_sha"
+
+wt_name=$(basename "$wt_path")
+@wt-remove "$wt_name"
+
+# ===================
 echo "--- @wt-create with make hooks ---"
 
 setup_repo hookrepo

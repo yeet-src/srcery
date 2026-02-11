@@ -1,8 +1,9 @@
 #!/usr/bin/env srcery-bash
 
-repo="${1:?usage: @dev REPO}"
+repo="${1:?usage: @dev REPO [BRANCH]}"
+branch="${2:-}"
 
-wt_path=$(@wt-create "$repo")
+wt_path=$(@wt-create "$repo" "$branch")
 wt_name=$(basename "$wt_path")
 
 @svc-start "$wt_path" claude claude >&2

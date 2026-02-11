@@ -1,4 +1,11 @@
 #compdef @dev
-local -a repos
-repos=(${(f)"$(ls "$YEET_SRC_ROOT" 2>/dev/null)"})
-(( ${#repos} )) && _values "repo" $repos
+if (( CURRENT == 2 )); then
+	local -a repos
+	repos=(${(f)"$(ls "$YEET_SRC_ROOT" 2>/dev/null)"})
+	(( ${#repos} )) && _values "repo" $repos
+elif (( CURRENT == 3 )); then
+	local repo="$words[2]"
+	local -a branches
+	branches=(${(f)"$(git -C "$YEET_SRC_ROOT/$repo" branch --format='%(refname:short)' 2>/dev/null)"})
+	(( ${#branches} )) && _values "branch" $branches
+fi
