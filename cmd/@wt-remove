@@ -12,7 +12,7 @@ wt_path="$SRCERY_DATA/worktrees/$name"
 if srcery_tmux has-session -t "=srcery" 2>/dev/null; then
 	srcery_tmux list-windows -t "=srcery" -F '#{window_name}' \
 	| while read -r win; do
-		[[ "$win" == "${name}/"* ]] && @svc-stop "$win"
+		[[ "$win" != "${name}/"* ]] || @svc-stop "$win"
 	done
 fi
 
