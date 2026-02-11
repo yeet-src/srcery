@@ -25,8 +25,13 @@ srcery_tmux list-windows -t "=srcery" -F '#{window_name} #{pane_dead} #{pane_pid
 	[[ -z "$wt_filter" ]]   || [[ "$wt_name" == *"$wt_filter"* ]]   || continue
 	[[ -z "$name_filter" ]] || [[ "$svc_name" == *"$name_filter"* ]] || continue
 
-	status="running"
-	[[ "$pane_dead" == "0" ]] || status="dead"
+	if [[ "$pane_dead" != "0" ]]; then
+		status="dead"
+	elif [[ -f "$SRCERY_DATA/status/$win" ]]; then
+		status=$(<"$SRCERY_DATA/status/$win")
+	else
+		status="running"
+	fi
 
 	printf "%-30s %-8s %s\n" "$win" "$status" "$pane_pid"
 done

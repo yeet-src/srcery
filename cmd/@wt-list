@@ -37,10 +37,13 @@ for wt in "$SRCERY_DATA"/worktrees/*/; do
 		while read -r win dead; do
 			[[ "$win" == "${name}/"* ]] || continue
 			svc_name="${win#*/}"
-			if [[ "$dead" == "0" ]]; then
-				svcs="${svcs:+$svcs,}$svc_name"
-			else
+			if [[ "$dead" != "0" ]]; then
 				svcs="${svcs:+$svcs,}${svc_name}(dead)"
+			elif [[ -f "$SRCERY_DATA/status/$win" ]]; then
+				svc_status=$(<"$SRCERY_DATA/status/$win")
+				svcs="${svcs:+$svcs,}${svc_name}(${svc_status})"
+			else
+				svcs="${svcs:+$svcs,}$svc_name"
 			fi
 		done <<< "$svc_windows"
 	fi

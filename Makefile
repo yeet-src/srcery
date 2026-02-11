@@ -1,4 +1,4 @@
-SHELL_FILES := $(wildcard cmd/*)
+SHELL_FILES := $(wildcard cmd/*) $(wildcard lib/*)
 
 .PHONY: lint check_lint test
 
@@ -10,4 +10,4 @@ check_lint:
 	shellcheck --shell=bash $(SHELL_FILES)
 
 test:
-	@bash test/test-svc.sh
+	@for f in test/test-*.sh; do echo "=== $$f ===" && bash "$$f" || exit 1; done

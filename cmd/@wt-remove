@@ -16,6 +16,9 @@ if srcery_tmux has-session -t "=srcery" 2>/dev/null; then
 	done
 fi
 
+# clean up status files
+rm -rf "$SRCERY_DATA/status/${name:?}"
+
 if [[ -f "$wt_path/.git" ]]; then
 	# derive repo path and branch before removing
 	gitdir=$(<"$wt_path/.git")

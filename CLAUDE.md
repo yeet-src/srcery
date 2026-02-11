@@ -16,8 +16,11 @@ scripts that call into real code in those other repos.
 - `cmd/srcery-bash` — shebang target (`#!/usr/bin/env srcery-bash`); `cd`s to
   `$SRCERY_ROOT`, sets `set -euo pipefail` (propagated via `SHELLOPTS`),
   exports shared helpers (`die`, `srcery_tmux`), then `exec bash "$@"`
+- `lib/` — internal helper scripts, on `PATH` via `srcery-bash`
+- `lib/srcery-notify` — Claude Code hook script for status notifications
 - `completions/` — zsh completion files (`_@command` with `#compdef` headers)
 - `data/` — gitignored runtime data (e.g. worktrees); path overridable via `SRCERY_DATA`
+- `data/status/<wt>/<svc>` — service status files written by hooks (idle, attention)
 - `test/` — test scripts
 
 # Env vars (set by `.envrc`)
@@ -30,6 +33,9 @@ scripts that call into real code in those other repos.
 # Commands
 
 - `@dev REPO [BRANCH [BASE]]` — create worktree + start claude as service + attach in tmux
+  - Writes `.claude/settings.local.json` with notification hooks
+  - Uses `--append-system-prompt` for background agent instructions
+  - `CLAUDE_BIN` env var overrides claude binary (for testing)
 - `@wt-create REPO [BRANCH [BASE]]` — create worktree (BRANCH = new branch name, BASE = start point)
 - `@wt-list [REPO]` — list worktrees, optionally filtered
 - `@wt-remove NAME` — stop services + remove worktree
@@ -53,6 +59,14 @@ Services are tmux windows. Filtered views are sessions with linked windows.
 - `srcery_tmux` wrapper always uses `-L $SRCERY_TMUX_SOCKET`
 - Attach: `@attach` (or raw: `tmux -L srcery attach -t srcery`)
 
+# Claude Code notification hooks
+
+`@dev` wires Claude Code hooks via `.claude/settings.local.json` in the worktree:
+- `Notification` (idle_prompt, permission_prompt) → writes status to `data/status/`, sends macOS notification (osascript) or terminal bell fallback
+- `UserPromptSubmit` → clears status file
+- `@svc-list` and `@wt-list` show these statuses (idle, attention) instead of "running"
+- `SRCERY_SVC_WINDOW` env var tells the hook which status file to write
+
 # Repo hooks
 
 Repos define optional make targets that `@wt-create` calls:
@@ -68,7 +82,7 @@ Repos define optional make targets that `@wt-create` calls:
 
 # Lint & Test
 
-- `make check_lint` — shellcheck all `cmd/` scripts (CI check)
+- `make check_lint` — shellcheck all `cmd/` and `lib/` scripts (CI check)
 - `make lint` — shellcheck + auto-apply fixes
 - `make test` — run tests (`test/test-svc.sh`); operates entirely in tmpdir
 

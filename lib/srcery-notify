@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+input=$(cat)
+
+# Simple JSON string extraction (no jq dependency)
+json_str() {
+	grep -o "\"$1\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" <<< "$input" \
+		| head -1 | cut -d'"' -f4 || true
+}
+
+event=$(json_str hook_event_name)
+notification_type=$(json_str notification_type)
+message=$(json_str message)
+
+status_file="${SRCERY_DATA:?}/status/${SRCERY_SVC_WINDOW:?}"
+
+case "$event" in
+	Notification)
+		case "$notification_type" in
+			idle_prompt)       status="idle" ;;
+			permission_prompt) status="attention" ;;
+			*)                 exit 0 ;;
+		esac
+		mkdir -p "$(dirname "$status_file")"
+		echo "$status" > "$status_file"
+
+		# macOS notification if available, else terminal bell
+		if command -v osascript &>/dev/null; then
+			osascript -e "display notification \"${message:-Claude needs attention}\" with title \"srcery\"" &>/dev/null || true
+		else
+			printf '\a' > /dev/tty 2>/dev/null || true
+		fi
+		;;
+	UserPromptSubmit)
+		rm -f "$status_file"
+		;;
+esac
