@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Completer for @wt-create: POS WORD...
+pos=${1:-0}; shift 2>/dev/null || true
+case $pos in
+    1) ls "$YEET_SRC_ROOT" 2>/dev/null ;;
+    3) git -C "$YEET_SRC_ROOT/${1:-}" branch --format='%(refname:short)' 2>/dev/null ;;
+esac

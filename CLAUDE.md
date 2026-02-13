@@ -14,11 +14,14 @@ scripts that call into real code in those other repos.
 
 - `cmd/` — executable commands, on `PATH` via direnv
 - `cmd/srcery-bash` — shebang target (`#!/usr/bin/env srcery-bash`); `cd`s to
-  `$SRCERY_ROOT`, sets `set -euo pipefail` (propagated via `SHELLOPTS`),
-  exports shared helpers (`die`, `srcery_tmux`), then `exec bash "$@"`
+  `$SRCERY_ROOT`, exports shared helpers (`die`, `srcery_tmux`), then
+  `exec bash -euo pipefail "$@"` (options on exec, NOT via `export SHELLOPTS`)
 - `lib/` — internal helper scripts, on `PATH` via `srcery-bash`
 - `lib/srcery-notify` — Claude Code hook script for status notifications
-- `completions/` — zsh completion files (`_@command` with `#compdef` headers)
+- `completions/completers/` — bash scripts that output candidates (one per line)
+- `completions/generate` — produces `zsh/` and `fish/` wrappers from completers
+- `completions/zsh/` — generated zsh completions (do not edit; run `make completions`)
+- `completions/fish/` — generated fish completions (do not edit; run `make completions`)
 - `data/` — gitignored runtime data (e.g. worktrees); path overridable via `SRCERY_DATA`
 - `data/status/<wt>/<svc>` — service status files written by hooks (idle, attention)
 - `hooks/by-repo/<repo>/` — per-repo hooks (`init`, `run`); take `$wt_path` as `$1`
@@ -29,7 +32,8 @@ scripts that call into real code in those other repos.
 - `SRCERY_ROOT` — this project
 - `YEET_SRC_ROOT` — parent dir (org root with sibling repos)
 - `SRCERY_DATA` — data dir; defaults to `$SRCERY_ROOT/data` (set in `srcery-bash`)
-- `EXTRA_FPATH` — completions dir; picked up by user's zsh precmd hook
+- `EXTRA_FPATH` — zsh completions dir; picked up by user's zsh precmd hook
+- `EXTRA_FISH_COMPLETE_PATH` — fish completions dir; user sources in fish config
 
 # Commands
 
@@ -84,8 +88,9 @@ Services are tmux windows. Filtered views are sessions with linked windows.
 
 # Lint & Test
 
-- `make check_lint` — shellcheck all `cmd/`, `lib/`, and `hooks/` scripts (CI check)
+- `make check_lint` — shellcheck all `cmd/`, `lib/`, `hooks/`, and `completions/completers/` scripts (CI check)
 - `make lint` — shellcheck + auto-apply fixes
+- `make completions` — regenerate zsh + fish wrappers from completers
 - `make test` — run tests (`test/test-svc.sh`); operates entirely in tmpdir
 
 # Nix
@@ -93,8 +98,15 @@ Services are tmux windows. Filtered views are sessions with linked windows.
 Optional. Flake provides a nixpkgs pin and dev shell. `nix develop` or direnv.
 `shellcheck` provided via flake.
 
-# Zsh completions
+# Shell completions (zsh + fish)
 
-direnv can't modify `fpath`. We export `EXTRA_FPATH` and the user adds a
-`precmd` hook to their `.zshrc` that prepends it to `fpath` + runs `compinit`.
-Completion files must guard against empty lists (`(( ${#arr} )) && _values ...`).
+Completion logic lives in `completions/completers/` (bash scripts). Run
+`make completions` (or `completions/generate`) to regenerate `zsh/` and `fish/`
+wrappers. Both generated dirs are committed. `@svc-list` is a special case
+(flags only) — emitted directly by the generator.
+
+**zsh**: direnv exports `EXTRA_FPATH`; user adds a precmd hook to `.zshrc`
+that prepends it to `fpath` + runs `compinit`.
+
+**fish**: direnv exports `EXTRA_FISH_COMPLETE_PATH`; user sources completions
+from that dir in their fish config.

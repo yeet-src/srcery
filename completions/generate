@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+dir="$(cd "$(dirname "$0")" && pwd)"
+zsh_dir="$dir/zsh"
+fish_dir="$dir/fish"
+
+rm -rf "$zsh_dir" "$fish_dir"
+mkdir -p "$zsh_dir" "$fish_dir"
+
+# Generate wrappers from completer scripts
+for completer in "$dir/completers"/*; do
+    cmd="$(basename "$completer")"
+
+    # zsh wrapper
+    cat > "$zsh_dir/_${cmd}" <<EOF
+#compdef ${cmd}
+local -a candidates
+candidates=(\${(f)"\$("\$SRCERY_ROOT/completions/completers/${cmd}" \$((CURRENT-1)) "\${(@)words[2,-1]}" 2>/dev/null)"})
+(( \${#candidates} )) && compadd -a candidates
+EOF
+
+    # fish wrapper
+    func_name="${cmd#@}"
+    func_name="__srcery_${func_name//-/_}_complete"
+    cat > "$fish_dir/${cmd}.fish" <<EOF
+function ${func_name}
+    set -l tokens (commandline -opc)
+    set -l pos (count \$tokens)
+    if test -n (commandline -ct)
+        set pos (math \$pos - 1)
+    end
+    command \$SRCERY_ROOT/completions/completers/${cmd} \$pos \$tokens[2..]
+end
+complete -c ${cmd} -f -a '(${func_name})'
+EOF
+done
+
+# Special case: @svc-list (flags only, no completer)
+cat > "$zsh_dir/_@svc-list" <<'EOF'
+#compdef @svc-list
+_arguments \
+    '-w[filter by worktree]:pattern:' \
+    '-n[filter by name]:pattern:'
+EOF
+
+cat > "$fish_dir/@svc-list.fish" <<'EOF'
+complete -c @svc-list -s w -d 'filter by worktree' -r
+complete -c @svc-list -s n -d 'filter by name' -r
+EOF
+
+echo "Generated $(find "$zsh_dir" -maxdepth 1 -type f | wc -l | tr -d ' ') zsh completions in $zsh_dir"
+echo "Generated $(find "$fish_dir" -maxdepth 1 -type f | wc -l | tr -d ' ') fish completions in $fish_dir"
