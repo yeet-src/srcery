@@ -5,6 +5,15 @@ wt_path="$SRCERY_DATA/worktrees/$wt_name"
 
 [[ -d "$wt_path" ]] || die "worktree not found: $wt_name"
 
-win=$(@svc-start "$wt_path" shell "${SHELL:-bash}") >&2
+# Pick a unique service name: shell, shell-2, shell-3, ...
+name="shell"
+n=1
+while srcery_tmux list-windows -t "=srcery" -F '#{window_name}' 2>/dev/null \
+      | grep -qxF "$wt_name/$name"; do
+	n=$((n + 1))
+	name="shell-$n"
+done
 
-exec tmux -L "$SRCERY_TMUX_SOCKET" attach-session -t "=srcery:=$win"
+@svc-start "$wt_path" "$name" "${SHELL:-bash}" >&2
+
+exec tmux -L "$SRCERY_TMUX_SOCKET" attach-session -t "=srcery/$wt_name"
