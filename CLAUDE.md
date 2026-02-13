@@ -48,6 +48,7 @@ scripts that call into real code in those other repos.
 - `@svc-start WT NAME CMD...` — start CMD in tmux window (`srcery` session)
 - `@svc-stop WINDOW` — kill tmux window (auto-unlinks from all sessions)
 - `@svc-list [-w PAT] [-n PAT]` — list services; `-w` filters by worktree, `-n` by name
+- `@shell WT_NAME` — start a shell in a worktree + attach
 - `@attach [TARGET]` — attach to tmux session (no arg=all, `<wt>`=worktree, `@<name>`=by name)
 - `@help` — print command reference
 

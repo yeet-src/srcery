@@ -16,6 +16,7 @@ Services (tmux)
   @svc-list [-w PAT] [-n PAT]  List services, filter by worktree/name
 
 Sessions
+  @shell WT_NAME           Start a shell in a worktree + attach
   @attach                  Attach to all services
   @attach <wt>             Attach to one worktree's services
   @attach @<name>          Attach to all services with a given name

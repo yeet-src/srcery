@@ -12,6 +12,12 @@ if [[ package-lock.json -nt node_modules/.package-lock.json ]] 2>/dev/null; then
 	clone "$main_dir/node_modules" node_modules
 fi
 
+# Copy Claude Code config from main repo
+if [[ -d "$main_dir/.claude" ]]; then
+	echo "Copying .claude from $main_dir"
+	clone "$main_dir/.claude" .claude
+fi
+
 git submodule update --init --recursive
 
 # COW-copy pb_types build artifacts from main repo (after submodule init)

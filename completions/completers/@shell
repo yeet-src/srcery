@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Completer for @shell: POS WORD...
+pos=${1:-0}; shift 2>/dev/null || true
+case $pos in
+    1) ls "${SRCERY_DATA:-$SRCERY_ROOT/data}/worktrees" 2>/dev/null ;;
+esac

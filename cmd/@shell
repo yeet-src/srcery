@@ -1,0 +1,10 @@
+#!/usr/bin/env srcery-bash
+
+wt_name="${1:?usage: @shell WT_NAME}"
+wt_path="$SRCERY_DATA/worktrees/$wt_name"
+
+[[ -d "$wt_path" ]] || die "worktree not found: $wt_name"
+
+win=$(@svc-start "$wt_path" shell "${SHELL:-bash}") >&2
+
+exec tmux -L "$SRCERY_TMUX_SOCKET" attach-session -t "=srcery:=$win"

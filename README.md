@@ -14,6 +14,35 @@ cd yeet/srcery
 direnv allow
 ```
 
+### Shell completions
+
+direnv can't modify shell-internal completion paths, so you need a small
+snippet in your shell config. The `.envrc` exports the env vars; your
+config wires them in.
+
+**zsh** — add to `~/.zshrc`:
+
+```zsh
+_srcery_fpath_hook() {
+  if [[ -n "$EXTRA_FPATH" ]] && (( ! ${fpath[(I)$EXTRA_FPATH]} )); then
+    fpath=("$EXTRA_FPATH" $fpath)
+    compinit
+  fi
+}
+add-zsh-hook precmd _srcery_fpath_hook
+```
+
+**fish** — add to `~/.config/fish/config.fish` (after `direnv hook fish | source`):
+
+```fish
+function _srcery_fish_completions --on-variable EXTRA_FISH_COMPLETE_PATH
+    if set -q EXTRA_FISH_COMPLETE_PATH; and not contains $EXTRA_FISH_COMPLETE_PATH $fish_complete_path
+        set -p fish_complete_path $EXTRA_FISH_COMPLETE_PATH
+    end
+end
+_srcery_fish_completions  # run once at startup in case already set
+```
+
 ## Quick start
 
 ```
@@ -41,12 +70,13 @@ Services are tmux windows on a dedicated socket (`-L srcery`).
 @svc-list [-w PAT] [-n PAT]  List services, filter by worktree/name
 ```
 
-Attach to filtered views:
+### Sessions
 
 ```
-tmux -L srcery attach -t srcery             # all services
-tmux -L srcery attach -t 'srcery/<wt>'      # one worktree's services
-tmux -L srcery attach -t 'srcery/@<name>'   # all services with a given name
+@shell WT_NAME           Start a shell in a worktree + attach
+@attach                  Attach to all services
+@attach <wt>             Attach to one worktree's services
+@attach @<name>          Attach to all services with a given name
 ```
 
 ### Repo hooks
