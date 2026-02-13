@@ -1,0 +1,25 @@
+#!/usr/bin/env srcery-bash
+
+cd "${1:?usage: init WT_PATH}" || exit
+
+main_dir=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")
+
+clone() { rm -rf "$2"; cp -r --reflink=auto "$1" "$2"; }
+
+# COW-copy node_modules from main repo
+if [[ package-lock.json -nt node_modules/.package-lock.json ]] 2>/dev/null; then
+	echo "Copying node_modules from $main_dir"
+	clone "$main_dir/node_modules" node_modules
+fi
+
+# COW-copy pb_types build artifacts from main repo
+for dir in build dist; do
+	echo "Copying pb_types/$dir from $main_dir"
+	clone "$main_dir/pb_types/$dir" "pb_types/$dir"
+done
+
+git submodule update --init --recursive
+
+DEPLOY_ENV=local ASSETS_ROOT='' ./scripts/setup_build_env.sh
+DEPLOY_ENV=local ASSETS_ROOT='' ./scripts/setup_deploy_env.sh
+DEPLOY_ENV=local ASSETS_ROOT='' ./scripts/fetch_hosted_assets.sh

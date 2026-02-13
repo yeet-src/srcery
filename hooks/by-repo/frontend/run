@@ -1,0 +1,5 @@
+#!/usr/bin/env srcery-bash
+
+cd "${1:?usage: run WT_PATH}" || exit
+
+exec npm run dev

@@ -21,6 +21,7 @@ scripts that call into real code in those other repos.
 - `completions/` — zsh completion files (`_@command` with `#compdef` headers)
 - `data/` — gitignored runtime data (e.g. worktrees); path overridable via `SRCERY_DATA`
 - `data/status/<wt>/<svc>` — service status files written by hooks (idle, attention)
+- `hooks/by-repo/<repo>/` — per-repo hooks (`init`, `run`); take `$wt_path` as `$1`
 - `test/` — test scripts
 
 # Env vars (set by `.envrc`)
@@ -69,9 +70,10 @@ Services are tmux windows. Filtered views are sessions with linked windows.
 
 # Repo hooks
 
-Repos define optional make targets that `@wt-create` calls:
-- `make wt_init` — build/setup (e.g. `cp -r node_modules`)
-- `make wt_run` — long-running service (run via `@svc-start`)
+`@wt-create` checks for hooks in `hooks/by-repo/<repo>/` first, falls back to make targets:
+- `hooks/by-repo/<repo>/init` — setup script, receives `$wt_path` as `$1`
+- `hooks/by-repo/<repo>/run` — long-running service, receives `$wt_path` as `$1` (run via `@svc-start`)
+- Fallback: `make wt_init` / `make wt_run` targets in the repo Makefile
 
 # Shell style
 
@@ -82,7 +84,7 @@ Repos define optional make targets that `@wt-create` calls:
 
 # Lint & Test
 
-- `make check_lint` — shellcheck all `cmd/` and `lib/` scripts (CI check)
+- `make check_lint` — shellcheck all `cmd/`, `lib/`, and `hooks/` scripts (CI check)
 - `make lint` — shellcheck + auto-apply fixes
 - `make test` — run tests (`test/test-svc.sh`); operates entirely in tmpdir
 

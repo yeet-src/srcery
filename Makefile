@@ -1,4 +1,4 @@
-SHELL_FILES := $(wildcard cmd/*) $(wildcard lib/*)
+SHELL_FILES := $(wildcard cmd/*) $(wildcard lib/*) $(wildcard hooks/by-repo/*/*)
 
 .PHONY: lint check_lint test
 
