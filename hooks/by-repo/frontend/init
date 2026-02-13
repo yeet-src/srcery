@@ -12,13 +12,13 @@ if [[ package-lock.json -nt node_modules/.package-lock.json ]] 2>/dev/null; then
 	clone "$main_dir/node_modules" node_modules
 fi
 
-# COW-copy pb_types build artifacts from main repo
+git submodule update --init --recursive
+
+# COW-copy pb_types build artifacts from main repo (after submodule init)
 for dir in build dist; do
 	echo "Copying pb_types/$dir from $main_dir"
 	clone "$main_dir/pb_types/$dir" "pb_types/$dir"
 done
-
-git submodule update --init --recursive
 
 DEPLOY_ENV=local ASSETS_ROOT='' ./scripts/setup_build_env.sh
 DEPLOY_ENV=local ASSETS_ROOT='' ./scripts/setup_deploy_env.sh
