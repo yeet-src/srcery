@@ -45,21 +45,26 @@ scripts that call into real code in those other repos.
 - `@wt-list [REPO]` — list worktrees, optionally filtered
 - `@wt-remove NAME` — stop services + remove worktree
 - `@wt-clear` — remove all worktrees (y/n confirmation)
-- `@svc-start WT NAME CMD...` — start CMD in tmux window (`srcery` session)
-- `@svc-stop WINDOW` — kill tmux window (auto-unlinks from all sessions)
+- `@svc-start WT_PATH NAME CMD...` — start CMD in tmux window, returns window ID (`@N`)
+- `@svc-stop WINDOW_ID` — kill tmux window by ID (`@N`), cleans up status file
 - `@svc-list [-w PAT] [-n PAT]` — list services; `-w` filters by worktree, `-n` by name
 - `@shell WT_NAME` — start a shell in a worktree + attach
-- `@attach [TARGET]` — attach to tmux session (no arg=all, `<wt>`=worktree, `@<name>`=by name)
+- `@attach [TARGET]` — attach to tmux (no arg=master, `<wt>`=ephemeral worktree session, `@<name>`=ephemeral name session)
 - `@help` — print command reference
 
 # tmux service architecture
 
-Services are tmux windows. Filtered views are sessions with linked windows.
+Services are tmux windows. Worktree association derived from `#{pane_current_path}` at query time.
 
 - Master session `srcery` — all service windows
-- `srcery/<wt_name>` — per-worktree session (linked windows)
-- `srcery/@<svc_name>` — per-name session (linked windows)
-- Window name format: `<wt_name>/<svc_name>` (e.g. `wt_a1b2_repo/run`)
+- Window names = just the service name: `claude`, `run`, `shell`, `shell-2`
+- Duplicate names allowed across worktrees (same name + different CWD)
+- Windows targeted by tmux window ID (`@0`, `@1`, etc.) — always unambiguous
+- No eager linked sessions — `@attach` creates ephemeral filtered sessions on demand
+  - `srcery/<wt>` with `destroy-unattached on` — auto-cleaned on detach
+  - `srcery/@<name>` with `destroy-unattached on`
+- Worktree association: `basename(#{pane_current_path})` = wt_name
+- All path comparisons use `pwd -P` (macOS `/tmp` → `/private/tmp`)
 - `remain-on-exit on` globally on srcery tmux server — dead services stay inspectable
 - Dedicated tmux socket: `SRCERY_TMUX_SOCKET` (defaults to `srcery`, tests use `srcery-test`)
 - `srcery_tmux` wrapper always uses `-L $SRCERY_TMUX_SOCKET`

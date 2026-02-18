@@ -8,11 +8,16 @@ name="${name##*/}"
 wt_path="$SRCERY_DATA/worktrees/$name"
 [[ -d "$wt_path" ]] || die "no such worktree directory: $name"
 
-# stop any services running in this worktree
+# resolve to absolute for matching (pwd -P to match tmux's pane_current_path)
+abs_wt_path=$(cd "$wt_path" && pwd -P)
+
+# stop any services running in this worktree (matched by CWD)
 if srcery_tmux has-session -t "=srcery" 2>/dev/null; then
-	srcery_tmux list-windows -t "=srcery" -F '#{window_name}' \
-	| while read -r win; do
-		[[ "$win" != "${name}/"* ]] || @svc-stop "$win"
+	srcery_tmux list-windows -t "=srcery" -F '#{window_id} #{pane_current_path}' \
+	| while read -r win_id cwd; do
+		if [[ "$cwd" == "$abs_wt_path" || "$cwd" == "$abs_wt_path/"* ]]; then
+			@svc-stop "$win_id" || true
+		fi
 	done
 fi
 

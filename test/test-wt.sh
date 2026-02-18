@@ -134,7 +134,7 @@ list=$(@svc-list -w "$wt_name")
 assert contains "$list" "running"
 
 t "wt-create uses 'run' as service name"
-assert contains "$list" "${wt_name}/run"
+assert contains "$list" "run"
 
 t "wt-list shows running services"
 wt_list=$(@wt-list)

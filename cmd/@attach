@@ -2,11 +2,56 @@
 
 # usage: @attach [TARGET]
 #   @attach            all services (master session)
-#   @attach <wt>       one worktree's services
-#   @attach @<name>    all services with a given name
+#   @attach <wt>       one worktree's services (ephemeral filtered session)
+#   @attach @<name>    all services with a given name (ephemeral filtered session)
 # underlying: tmux -L srcery attach-session -t <session>
 
-target="srcery"
-[[ $# -gt 0 ]] && target="srcery/${1}"
+if [[ $# -eq 0 ]]; then
+	exec tmux -L "$SRCERY_TMUX_SOCKET" attach-session -t "=srcery"
+fi
 
-exec tmux -L "$SRCERY_TMUX_SOCKET" attach-session -t "=$target"
+target="$1"
+
+srcery_tmux has-session -t "=srcery" 2>/dev/null \
+	|| die "no services running"
+
+if [[ "$target" == @* ]]; then
+	# filter by service name
+	svc_name="${target#@}"
+	session_name="srcery/@${svc_name}"
+	match_field="name"
+	match_value="$svc_name"
+else
+	# filter by worktree
+	session_name="srcery/${target}"
+	match_field="wt"
+	match_value="$target"
+fi
+
+# collect matching window IDs and first matching CWD
+first_cwd=""
+mapfile -t win_ids < <(
+	srcery_tmux list-windows -t "=srcery" -F '#{window_id} #{window_name} #{pane_current_path}' \
+	| while read -r wid wname cwd; do
+		[[ "$wname" != "_placeholder" ]] || continue
+		if [[ "$match_field" == "name" ]]; then
+			[[ "$wname" == "$match_value" ]] && echo "$wid"
+		else
+			wt_name=$(basename "$cwd")
+			[[ "$wt_name" == "$match_value" ]] && echo "$wid"
+		fi
+	done
+)
+
+[[ ${#win_ids[@]} -gt 0 ]] || die "no matching services for: $target"
+
+# resolve start directory from first matching window's CWD
+first_cwd=$(srcery_tmux display-message -t "${win_ids[0]}" -p '#{pane_current_path}')
+
+# create ephemeral session with start directory set to worktree
+if srcery_tmux new-session -d -s "$session_name" -t "=srcery" -c "$first_cwd" 2>/dev/null; then
+	srcery_tmux set-option -t "=$session_name" destroy-unattached on 2>/dev/null || true
+fi
+
+# if session already exists (e.g. leftover), just attach
+exec tmux -L "$SRCERY_TMUX_SOCKET" attach-session -t "=$session_name"

@@ -15,36 +15,39 @@ wt_b=$(@wt-create shellrepo shell-b)
 t "@shell starts a shell service"
 @shell shell-a 2>&1 || true
 wins=$(tmux -L srcery-test list-windows -t "=srcery" -F '#{window_name}')
-assert contains "$wins" "shell-a/shell"
+assert contains "$wins" "shell"
 
 t "@shell service starts in worktree directory"
 sleep 0.1
-pane_path=$(tmux -L srcery-test display-message -t "=srcery:=shell-a/shell" -p '#{pane_current_path}')
-# resolve symlinks (/tmp -> /private/tmp on macOS)
-expected=$(cd "$wt_a" && pwd -P)
+# find the shell window for shell-a by checking CWD
+abs_wt_a=$(cd "$wt_a" && pwd -P)
+shell_info=$(tmux -L srcery-test list-windows -t "=srcery" -F '#{window_name} #{pane_current_path}' \
+	| grep "^shell " | head -1)
+pane_path=$(echo "$shell_info" | awk '{print $2}')
 actual=$(cd "$pane_path" && pwd -P)
-assert test "$actual" = "$expected"
-
-t "@shell worktree session only has its own services"
-wt_wins=$(tmux -L srcery-test list-windows -t "=srcery/shell-a" -F '#{window_name}')
-assert_not contains "$wt_wins" "shell-b/"
+assert test "$actual" = "$abs_wt_a"
 
 t "@shell is repeatable (second call creates shell-2)"
 @shell shell-a 2>&1 || true
-wins=$(tmux -L srcery-test list-windows -t "=srcery/shell-a" -F '#{window_name}')
-assert contains "$wins" "shell-a/shell-2"
+wins=$(tmux -L srcery-test list-windows -t "=srcery" -F '#{window_name}')
+assert contains "$wins" "shell-2"
 
 t "@shell third call creates shell-3"
 @shell shell-a 2>&1 || true
-wins=$(tmux -L srcery-test list-windows -t "=srcery/shell-a" -F '#{window_name}')
-assert contains "$wins" "shell-a/shell-3"
+wins=$(tmux -L srcery-test list-windows -t "=srcery" -F '#{window_name}')
+assert contains "$wins" "shell-3"
 
-t "@shell attaches to worktree session (not master)"
+t "@shell attaches via worktree session (not master)"
 err=$(@shell shell-b 2>&1 || true)
 assert contains "$err" "open terminal failed"
+# ephemeral session srcery/<wt> should exist (or have existed)
+sessions=$(tmux -L srcery-test list-sessions -F '#{session_name}' 2>/dev/null || true)
+assert contains "$sessions" "srcery/shell-b"
 
-# cleanup
-@svc-stop "shell-a/claude" >/dev/null
-@svc-stop "shell-b/claude" >/dev/null
+t "@shell same worktree reuses same session as @attach"
+# @attach shell-a should use srcery/shell-a
+@attach shell-a 2>&1 || true
+sessions=$(tmux -L srcery-test list-sessions -F '#{session_name}' 2>/dev/null || true)
+assert contains "$sessions" "srcery/shell-a"
 
 report

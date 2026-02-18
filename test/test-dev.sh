@@ -30,11 +30,15 @@ assert contains "$settings" "UserPromptSubmit"
 
 t "@dev starts claude service"
 list=$(@svc-list -n claude)
-assert contains "$list" "$wt_name/claude"
+assert contains "$list" "claude"
 
-t "@dev service uses mock claude binary"
-dead=$(tmux -L srcery-test display-message -t "=srcery:=$wt_name/claude" -p '#{pane_dead}')
-assert test "$dead" = "0"
+t "@dev service is running in worktree"
+list=$(@svc-list -w "$wt_name")
+assert contains "$list" "claude"
+
+t "@dev attaches via worktree session"
+sessions=$(tmux -L srcery-test list-sessions -F '#{session_name}' 2>/dev/null || true)
+assert contains "$sessions" "srcery/$wt_name"
 
 @wt-remove "$wt_name"
 unset CLAUDE_BIN

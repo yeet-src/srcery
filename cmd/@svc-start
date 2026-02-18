@@ -1,17 +1,16 @@
 #!/usr/bin/env srcery-bash
 
-wt_path="${1:?usage: @svc-start WT_PATH NAME CMD...}"
-name="${2:?usage: @svc-start WT_PATH NAME CMD...}"
+wt_path="${1:?usage: @svc-start WT_PATH NAME [CMD...]}"
+name="${2:?usage: @svc-start WT_PATH NAME [CMD...]}"
 shift 2
-[[ $# -gt 0 ]] || die "usage: @svc-start WT_PATH NAME CMD..."
 
-wt_name=$(basename "$wt_path")
-win="${wt_name}/${name}"
+# resolve to absolute path (pwd -P to match tmux's pane_current_path)
+wt_path=$(cd "$wt_path" && pwd -P)
 
-# reject duplicate
-if srcery_tmux list-windows -t "=srcery" -F '#{window_name}' 2>/dev/null \
-    | grep -qxF "$win"; then
-	die "service already exists: $win"
+# reject duplicate: same name + same CWD
+if srcery_tmux list-windows -t "=srcery" -F '#{window_name} #{pane_current_path}' 2>/dev/null \
+    | grep -qxF "$name $wt_path"; then
+	die "service already exists: $name in $wt_path"
 fi
 
 # ensure master session
@@ -23,25 +22,7 @@ srcery_tmux has-session -t "=srcery" 2>/dev/null \
 srcery_tmux set-option -gw remain-on-exit on
 
 # create service window
-srcery_tmux new-window -d -t "=srcery" -n "$win" -c "$wt_path" "$@"
+srcery_tmux new-window -d -t "=srcery" -n "$name" -c "$wt_path" -P -F '#{window_id}' "$@"
 
 # kill placeholder if it exists
 srcery_tmux kill-window -t "=srcery:=_placeholder" 2>/dev/null || true
-
-# link to per-worktree session
-wt_session="srcery/${wt_name}"
-srcery_tmux has-session -t "=$wt_session" 2>/dev/null \
-	|| srcery_tmux new-session -d -s "$wt_session" -n _placeholder 2>/dev/null \
-	|| true
-srcery_tmux link-window -s "=srcery:=$win" -t "=$wt_session"
-srcery_tmux kill-window -t "=$wt_session:=_placeholder" 2>/dev/null || true
-
-# link to per-name session
-name_session="srcery/@${name}"
-srcery_tmux has-session -t "=$name_session" 2>/dev/null \
-	|| srcery_tmux new-session -d -s "$name_session" -n _placeholder 2>/dev/null \
-	|| true
-srcery_tmux link-window -s "=srcery:=$win" -t "=$name_session"
-srcery_tmux kill-window -t "=$name_session:=_placeholder" 2>/dev/null || true
-
-echo "$win"

@@ -13,25 +13,24 @@ done
 
 srcery_tmux has-session -t "=srcery" 2>/dev/null || exit 0
 
-printf "%-30s %-8s %s\n" WINDOW STATUS PID
+printf "%-6s %-15s %-20s %-8s %s\n" ID NAME WORKTREE STATUS PID
 
-srcery_tmux list-windows -t "=srcery" -F '#{window_name} #{pane_dead} #{pane_pid}' \
-| while read -r win pane_dead pane_pid; do
-	[[ "$win" != "_placeholder" ]] || continue
+srcery_tmux list-windows -t "=srcery" -F '#{window_id} #{window_name} #{pane_current_path} #{pane_dead} #{pane_pid}' \
+| while read -r win_id wname cwd pane_dead pane_pid; do
+	[[ "$wname" != "_placeholder" ]] || continue
 
-	wt_name="${win%%/*}"
-	svc_name="${win#*/}"
+	wt_name=$(basename "$cwd")
 
-	[[ -z "$wt_filter" ]]   || [[ "$wt_name" == *"$wt_filter"* ]]   || continue
-	[[ -z "$name_filter" ]] || [[ "$svc_name" == *"$name_filter"* ]] || continue
+	[[ -z "$wt_filter" ]]   || [[ "$wt_name" == *"$wt_filter"* ]] || continue
+	[[ -z "$name_filter" ]] || [[ "$wname" == *"$name_filter"* ]]  || continue
 
 	if [[ "$pane_dead" != "0" ]]; then
 		status="dead"
-	elif [[ -f "$SRCERY_DATA/status/$win" ]]; then
-		status=$(<"$SRCERY_DATA/status/$win")
+	elif [[ -f "$SRCERY_DATA/status/$wt_name/$wname" ]]; then
+		status=$(<"$SRCERY_DATA/status/$wt_name/$wname")
 	else
 		status="running"
 	fi
 
-	printf "%-30s %-8s %s\n" "$win" "$status" "$pane_pid"
+	printf "%-6s %-15s %-20s %-8s %s\n" "$win_id" "$wname" "$wt_name" "$status" "$pane_pid"
 done

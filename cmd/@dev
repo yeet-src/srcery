@@ -7,7 +7,6 @@ base="${3:-}"
 
 wt_path=$(@wt-create "$repo" "$branch" "$base")
 wt_name=$(basename "$wt_path")
-win="${wt_name}/claude"
 
 # Write Claude Code hook config for status notifications
 mkdir -p "$wt_path/.claude"
@@ -26,8 +25,8 @@ cat > "$wt_path/.claude/settings.local.json" <<EOF
 EOF
 
 @svc-start "$wt_path" claude \
-	env "SRCERY_SVC_WINDOW=$win" "SRCERY_DATA=$SRCERY_DATA" \
-	zsh -c "SHELL=bash $CLAUDE_BIN --allow-dangerously-skip-permissions \
-		--append-system-prompt 'You are a background worktree agent managed by srcery. Work autonomously — do not ask clarifying questions unless truly stuck. Commit eagerly after completing logical units of work. When finished, leave the worktree in a clean committed state with no uncommitted changes.'; exec zsh" >&2
+	env "SRCERY_SVC_WINDOW=$wt_name/claude" "SRCERY_DATA=$SRCERY_DATA" \
+	"$CLAUDE_BIN" --allow-dangerously-skip-permissions \
+	--append-system-prompt 'You are a background worktree agent managed by srcery. Work autonomously — do not ask clarifying questions unless truly stuck. Commit eagerly after completing logical units of work. When finished, leave the worktree in a clean committed state with no uncommitted changes.' >/dev/null
 
-exec tmux -L "$SRCERY_TMUX_SOCKET" attach-session -t "=srcery:=$win"
+exec @attach "$wt_name"
