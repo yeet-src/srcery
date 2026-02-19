@@ -1,0 +1,154 @@
+#!/usr/bin/env srcery-bash
+
+# Detailed view of all srcery tmux panes, grouped by worktree and window.
+
+srcery_tmux has-session -t "=srcery" 2>/dev/null || { echo "no srcery session"; exit 0; }
+
+filter="${1:-}"
+cols=$(tput cols 2>/dev/null || echo 80)
+
+# Gather all pane info — one tmux query per pane to avoid delimiter issues
+declare -A wt_names  # abs_path -> wt_name
+if [[ -d "$SRCERY_DATA/worktrees" ]]; then
+	for wt in "$SRCERY_DATA"/worktrees/*/; do
+		[[ -d "$wt" ]] || continue
+		n="${wt%/}"; n="${n##*/}"
+		abs=$(cd "$wt" && pwd -P)
+		wt_names["$abs"]="$n"
+	done
+fi
+
+# Group panes by worktree name — store indices into parallel arrays
+declare -a p_winid p_wname p_paneid p_pid p_dead p_cmd
+declare -A wt_indices  # wt_name -> space-separated indices
+orphan_indices=""
+i=0
+
+while read -r win_id wname pane_id pane_pid pane_dead pcmd cwd; do
+	[[ "$wname" != "_placeholder" ]] || continue
+
+	p_winid[i]="$win_id"
+	p_wname[i]="$wname"
+	p_paneid[i]="$pane_id"
+	p_pid[i]="$pane_pid"
+	p_dead[i]="$pane_dead"
+	p_cmd[i]="$pcmd"
+
+	matched_wt=""
+	for abs in "${!wt_names[@]}"; do
+		if [[ "$cwd" == "$abs" || "$cwd" == "$abs/"* ]]; then
+			matched_wt="${wt_names[$abs]}"
+			break
+		fi
+	done
+
+	if [[ -n "$matched_wt" ]]; then
+		wt_indices["$matched_wt"]+="$i "
+	else
+		orphan_indices+="$i "
+	fi
+	i=$((i + 1))
+done < <(srcery_tmux list-panes -s -t "=srcery" \
+	-F '#{window_id} #{window_name} #{pane_id} #{pane_pid} #{pane_dead} #{pane_current_command} #{pane_current_path}')
+
+# Get a useful command description for a pane
+pane_desc() {
+	local pane_pid="$1" pane_dead="$2" pcmd="$3"
+
+	if [[ "$pane_dead" != "0" ]]; then
+		echo "$pcmd"
+		return
+	fi
+
+	# For interactive shells, just show the shell name
+	case "$pcmd" in
+		fish|bash|zsh|sh) echo "$pcmd"; return ;;
+	esac
+
+	# Get full command line from ps
+	local full
+	full=$(ps -o args= -p "$pane_pid" 2>/dev/null || true)
+
+	# If ps returned a shell invocation (e.g. "fish -c fish"), simplify
+	case "$full" in
+		fish*|bash*|zsh*|sh\ *)
+			echo "$pcmd"
+			return
+			;;
+	esac
+
+	echo "${full:-$pcmd}"
+}
+
+# ANSI styles
+dim=$'\e[2m'
+bold=$'\e[1m'
+yellow=$'\e[33m'
+reset=$'\e[0m'
+status_w=11  # width of status column including trailing space
+
+# OSC 8 hyperlink helpers
+# shellcheck disable=SC1003
+link() { printf '\e]8;;%s\e\\%s\e]8;;\e\\' "$1" "$2"; }
+
+styled_status() {
+	local status="$1"
+	case "$status" in
+		"")        printf '%s%-*s%s' "$dim"     "$status_w" "-" "$reset" ;;
+		idle)      printf '%s%-*s%s' "$dim"     "$status_w" "idle" "$reset" ;;
+		attention) printf '%s%-*s%s' "$bold$yellow" "$status_w" "attention" "$reset" ;;
+		dead)      printf '%s%-*s%s' "$dim"     "$status_w" "dead" "$reset" ;;
+		*)         printf '%s%-*s%s' "$dim"     "$status_w" "$status" "$reset" ;;
+	esac
+}
+
+print_pane() {
+	local idx="$1" wt_name="${2:-}"
+	local win_id="${p_winid[$idx]}" wname="${p_wname[$idx]}" pane_id="${p_paneid[$idx]}"
+	local pane_pid="${p_pid[$idx]}" pane_dead="${p_dead[$idx]}" pcmd="${p_cmd[$idx]}"
+
+	# Status
+	local status=""
+	if [[ "$pane_dead" != "0" ]]; then
+		status="dead"
+	elif [[ -n "$wt_name" ]] && [[ -f "$SRCERY_DATA/status/$wt_name/$pane_id" ]]; then
+		status=$(<"$SRCERY_DATA/status/$wt_name/$pane_id")
+	fi
+
+	local desc
+	desc=$(pane_desc "$pane_pid" "$pane_dead" "$pcmd")
+
+	# Truncate command to fit: "  name(12)  status(11)  cmd(...)"
+	local max_cmd=$((cols - 2 - 12 - 1 - status_w - 1))
+	(( max_cmd > 10 )) || max_cmd=10
+	if (( ${#desc} > max_cmd )); then
+		desc="${desc:0:$((max_cmd - 1))}…"
+	fi
+
+	# Window name links to tmux select-window for navigation
+	local target="tmux -L ${SRCERY_TMUX_SOCKET} select-window -t ${win_id}"
+	printf "  "
+	link "action:$target" "$(printf '%-12s' "$wname")"
+	printf " "
+	styled_status "$status"
+	printf " %s\n" "$desc"
+}
+
+# Print worktrees
+for wt in $(printf '%s\n' "${!wt_indices[@]}" | sort); do
+	[[ -z "$filter" ]] || [[ "$wt" == *"$filter"* ]] || continue
+	link "action:@attach ${wt}" "$wt"
+	printf '\n'
+	for idx in ${wt_indices[$wt]}; do
+		print_pane "$idx" "$wt"
+	done
+done
+
+# Print orphan panes (not in any managed worktree)
+if [[ -n "$orphan_indices" ]] && [[ -z "$filter" ]]; then
+	echo "(other)"
+	# shellcheck disable=SC2086
+	for idx in $orphan_indices; do
+		print_pane "$idx"
+	done
+fi

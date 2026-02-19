@@ -7,18 +7,17 @@ Workflow
 Worktrees
   @wt-create REPO [BRANCH [BASE]]  Create a worktree for REPO, setup & run
   @wt-list [REPO]       List worktrees, optionally filtered by REPO
-  @wt-remove NAME       Remove a worktree (stops its services)
+  @wt-remove NAME       Remove a worktree (kills its tmux windows)
   @wt-clear             Remove all worktrees (with confirmation)
-
-Services (tmux)
-  @svc-start WT NAME CMD...    Start CMD in tmux window (srcery session)
-  @svc-stop WINDOW             Stop service (kill tmux window)
-  @svc-list [-w PAT] [-n PAT]  List services, filter by worktree/name
+  @ps [FILTER]          Detailed pane view (full commands, grouped by worktree)
 
 Sessions
   @shell WT_NAME           Start a shell in a worktree + attach
-  @attach                  Attach to all services
-  @attach <wt>             Attach to one worktree's services
-  @attach @<name>          Attach to all services with a given name
+  @attach                  Attach to all windows
+  @attach <wt>             Attach to one worktree's windows
+  @attach @<name>          Attach to all windows with a given name
   (underlying: tmux -L srcery attach-session -t '=srcery[/filter]')
+
+Setup
+  @install-hooks           Merge srcery notification hooks into ~/.claude/settings.json
 EOF

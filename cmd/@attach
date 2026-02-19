@@ -2,8 +2,8 @@
 
 # usage: @attach [TARGET]
 #   @attach            all services (master session)
-#   @attach <wt>       one worktree's services (ephemeral filtered session)
-#   @attach @<name>    all services with a given name (ephemeral filtered session)
+#   @attach <wt>       one worktree's panes (ephemeral filtered session)
+#   @attach @<name>    all panes with a given window name (ephemeral filtered session)
 # underlying: tmux -L srcery attach-session -t <session>
 
 if [[ $# -eq 0 ]]; then
@@ -12,11 +12,8 @@ fi
 
 target="$1"
 
-srcery_tmux has-session -t "=srcery" 2>/dev/null \
-	|| die "no services running"
-
 if [[ "$target" == @* ]]; then
-	# filter by service name
+	# filter by window name
 	svc_name="${target#@}"
 	session_name="srcery/@${svc_name}"
 	match_field="name"
@@ -28,30 +25,54 @@ else
 	match_value="$target"
 fi
 
-# collect matching window IDs and first matching CWD
-first_cwd=""
+# collect matching window IDs (deduplicate — multiple panes per window possible)
 mapfile -t win_ids < <(
-	srcery_tmux list-windows -t "=srcery" -F '#{window_id} #{window_name} #{pane_current_path}' \
+	srcery_tmux list-panes -s -t "=srcery" -F '#{window_id} #{window_name} #{pane_current_path}' 2>/dev/null \
 	| while read -r wid wname cwd; do
 		[[ "$wname" != "_placeholder" ]] || continue
 		if [[ "$match_field" == "name" ]]; then
-			[[ "$wname" == "$match_value" ]] && echo "$wid"
+			[[ "$wname" == "$match_value" ]] || continue
 		else
-			wt_name=$(basename "$cwd")
-			[[ "$wt_name" == "$match_value" ]] && echo "$wid"
+			[[ "$(basename "$cwd")" == "$match_value" ]] || continue
 		fi
-	done
+		echo "$wid"
+	done | sort -u
 )
 
-[[ ${#win_ids[@]} -gt 0 ]] || die "no matching services for: $target"
+# if no matching panes, create a shell on demand for known worktrees
+if [[ ${#win_ids[@]} -eq 0 ]]; then
+	if [[ "$match_field" == "wt" ]]; then
+		wt_path="$SRCERY_DATA/worktrees/$match_value"
+		[[ -d "$wt_path" ]] || die "no matching panes or worktree for: $target"
+		wt_path=$(cd "$wt_path" && pwd -P)
+		srcery_new_window shell "$wt_path" >/dev/null
+		# re-collect after starting the shell
+		mapfile -t win_ids < <(
+			srcery_tmux list-panes -s -t "=srcery" -F '#{window_id} #{pane_current_path}' \
+			| while read -r wid cwd; do
+				[[ "$(basename "$cwd")" == "$match_value" ]] || continue
+				echo "$wid"
+			done | sort -u
+		)
+	fi
+	[[ ${#win_ids[@]} -gt 0 ]] || die "no matching panes for: $target"
+fi
 
 # resolve start directory from first matching window's CWD
 first_cwd=$(srcery_tmux display-message -t "${win_ids[0]}" -p '#{pane_current_path}')
 
-# create ephemeral session with start directory set to worktree
-if srcery_tmux new-session -d -s "$session_name" -t "=srcery" -c "$first_cwd" 2>/dev/null; then
-	srcery_tmux set-option -t "=$session_name" destroy-unattached on 2>/dev/null || true
-fi
+# tear down stale session if it exists (windows survive in master)
+srcery_tmux kill-session -t "=$session_name" 2>/dev/null || true
 
-# if session already exists (e.g. leftover), just attach
-exec tmux -L "$SRCERY_TMUX_SOCKET" attach-session -t "=$session_name"
+# create ephemeral session with a placeholder window
+srcery_tmux new-session -d -s "$session_name" -n _placeholder -c "$first_cwd"
+
+# link only matching windows from master
+for wid in "${win_ids[@]}"; do
+	srcery_tmux link-window -s "=srcery:$wid" -t "=$session_name"
+done
+
+# remove placeholder
+srcery_tmux unlink-window -t "=$session_name:=_placeholder" 2>/dev/null || true
+
+exec tmux -L "$SRCERY_TMUX_SOCKET" attach-session -t "=$session_name" \; set-option destroy-unattached on

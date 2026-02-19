@@ -1,6 +1,0 @@
-#!/usr/bin/env bash
-# Completer for @svc-stop: POS WORD...
-pos=${1:-0}; shift 2>/dev/null || true
-case $pos in
-    1) tmux -L "${SRCERY_TMUX_SOCKET:-srcery}" list-windows -t '=srcery' -F '#{window_id}' 2>/dev/null | grep -v '^_placeholder$' ;;
-esac

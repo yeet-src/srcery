@@ -11,12 +11,12 @@ wt_path="$SRCERY_DATA/worktrees/$name"
 # resolve to absolute for matching (pwd -P to match tmux's pane_current_path)
 abs_wt_path=$(cd "$wt_path" && pwd -P)
 
-# stop any services running in this worktree (matched by CWD)
+# kill any tmux windows whose CWD is in this worktree
 if srcery_tmux has-session -t "=srcery" 2>/dev/null; then
-	srcery_tmux list-windows -t "=srcery" -F '#{window_id} #{pane_current_path}' \
+	srcery_tmux list-panes -s -t "=srcery" -F '#{window_id} #{pane_current_path}' \
 	| while read -r win_id cwd; do
 		if [[ "$cwd" == "$abs_wt_path" || "$cwd" == "$abs_wt_path/"* ]]; then
-			@svc-stop "$win_id" || true
+			srcery_tmux kill-window -t "$win_id" 2>/dev/null || true
 		fi
 	done
 fi

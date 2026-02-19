@@ -1,4 +1,0 @@
-#compdef @svc-stop
-local -a candidates
-candidates=(${(f)"$("$SRCERY_ROOT/completions/completers/@svc-stop" $((CURRENT-1)) "${(@)words[2,-1]}" 2>/dev/null)"})
-(( ${#candidates} )) && compadd -a candidates

@@ -6,7 +6,7 @@ source "$(dirname "$0")/helpers.sh"
 echo "--- @attach ---"
 
 mkdir -p "$tmpdir/att_wt"
-win=$(@svc-start "$tmpdir/att_wt" att-svc sleep 999)
+win=$(srcery_new_window att-svc "$tmpdir/att_wt" sleep 999)
 
 t "attach (no args) finds master session"
 err=$(@attach 2>&1 || true)
@@ -34,7 +34,7 @@ assert contains "$wins" "att-svc"
 
 t "attach nonexistent target fails"
 err=$(@attach nonexistent 2>&1 || true)
-assert contains "$err" "no matching services"
+assert contains "$err" "no matching panes"
 
 t "attach reuses existing ephemeral session"
 # srcery/att_wt was created above; attaching again should succeed
@@ -47,14 +47,15 @@ start_dir=$(tmux -L srcery-test list-sessions -F '#{session_name} #{session_path
 expected=$(cd "$tmpdir/att_wt" && pwd -P)
 assert test "$start_dir" = "$expected"
 
-@svc-stop "$win" >/dev/null
+tmux -L srcery-test kill-window -t "$win" 2>/dev/null || true
 
 # ===================
 echo "--- @attach + @shell consistency ---"
 
 setup_repo consrepo
 wt_path=$(@wt-create consrepo cons-wt)
-@svc-start "$wt_path" claude sleep 999 >/dev/null
+abs_wt_path=$(cd "$wt_path" && pwd -P)
+srcery_new_window claude "$abs_wt_path" sleep 999 >/dev/null
 
 t "@shell uses same session type as @attach"
 @shell cons-wt 2>&1 || true

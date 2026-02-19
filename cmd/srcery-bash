@@ -17,4 +17,20 @@ srcery_tmux() {
 }
 export -f srcery_tmux
 
+# srcery_new_window NAME PATH [CMD...]
+# Ensures srcery master session exists, creates a detached window, prints window ID.
+srcery_new_window() {
+	local name="$1" path="$2"
+	shift 2
+	srcery_tmux has-session -t "=srcery" 2>/dev/null \
+		|| srcery_tmux new-session -d -s srcery -n _placeholder 2>/dev/null \
+		|| true
+	srcery_tmux set-option -gw remain-on-exit on
+	local wid
+	wid=$(srcery_tmux new-window -d -t "=srcery" -n "$name" -c "$path" -P -F '#{window_id}' "$@")
+	srcery_tmux kill-window -t "=srcery:=_placeholder" 2>/dev/null || true
+	echo "$wid"
+}
+export -f srcery_new_window
+
 exec bash -euo pipefail "$@"

@@ -1,0 +1,62 @@
+#!/usr/bin/env srcery-bash
+
+# Merge srcery notification hooks into ~/.claude/settings.json (idempotent).
+
+settings="$HOME/.claude/settings.json"
+notify_cmd="$SRCERY_ROOT/lib/srcery-notify"
+
+mkdir -p "$(dirname "$settings")"
+
+# Build the hooks JSON we want
+read -r -d '' hooks_json <<'HOOKS' || true
+{
+  "Notification": [{
+    "matcher": "idle_prompt|permission_prompt",
+    "hooks": [{"type": "command", "command": "NOTIFY_CMD"}]
+  }],
+  "UserPromptSubmit": [{
+    "hooks": [{"type": "command", "command": "NOTIFY_CMD"}]
+  }]
+}
+HOOKS
+hooks_json="${hooks_json//NOTIFY_CMD/$notify_cmd}"
+
+if [[ ! -f "$settings" ]]; then
+	# No settings file — create one with just hooks
+	printf '{\n  "hooks": %s\n}\n' "$hooks_json" > "$settings"
+	echo "Created $settings with srcery hooks" >&2
+	exit 0
+fi
+
+# Check if hooks are already present (simple check: notify command path in file)
+if grep -qF "$notify_cmd" "$settings" 2>/dev/null; then
+	exit 0
+fi
+
+# Merge hooks into existing settings using python (available on macOS)
+python3 -c "
+import json, sys
+
+with open('$settings') as f:
+    settings = json.load(f)
+
+hooks = json.loads('''$hooks_json''')
+
+existing = settings.get('hooks', {})
+for event, entries in hooks.items():
+    if event not in existing:
+        existing[event] = entries
+    else:
+        # Append our hook entries if not already present
+        for entry in entries:
+            if entry not in existing[event]:
+                existing[event].append(entry)
+
+settings['hooks'] = existing
+
+with open('$settings', 'w') as f:
+    json.dump(settings, f, indent=2)
+    f.write('\n')
+"
+
+echo "Merged srcery hooks into $settings" >&2

@@ -14,16 +14,17 @@ scripts that call into real code in those other repos.
 
 - `cmd/` — executable commands, on `PATH` via direnv
 - `cmd/srcery-bash` — shebang target (`#!/usr/bin/env srcery-bash`); `cd`s to
-  `$SRCERY_ROOT`, exports shared helpers (`die`, `srcery_tmux`), then
-  `exec bash -euo pipefail "$@"` (options on exec, NOT via `export SHELLOPTS`)
+  `$SRCERY_ROOT`, exports shared helpers (`die`, `srcery_tmux`, `srcery_new_window`),
+  then `exec bash -euo pipefail "$@"` (options on exec, NOT via `export SHELLOPTS`)
 - `lib/` — internal helper scripts, on `PATH` via `srcery-bash`
-- `lib/srcery-notify` — Claude Code hook script for status notifications
+- `lib/srcery-notify` — Claude Code hook script for status notifications (self-discovering)
 - `completions/completers/` — bash scripts that output candidates (one per line)
 - `completions/generate` — produces `zsh/` and `fish/` wrappers from completers
 - `completions/zsh/` — generated zsh completions (do not edit; run `make completions`)
 - `completions/fish/` — generated fish completions (do not edit; run `make completions`)
 - `data/` — gitignored runtime data (e.g. worktrees); path overridable via `SRCERY_DATA`
-- `data/status/<wt>/<svc>` — service status files written by hooks (idle, attention)
+- `data/status/<wt>/%<pane_id>` — status files written by hooks (idle, attention), keyed by tmux pane ID
+- `hooks/global/` — global hooks (`init`, `run`); run before repo hooks
 - `hooks/by-repo/<repo>/` — per-repo hooks (`init`, `run`); take `$wt_path` as `$1`
 - `test/` — test scripts
 
@@ -37,53 +38,53 @@ scripts that call into real code in those other repos.
 
 # Commands
 
-- `@dev REPO [BRANCH [BASE]]` — create worktree + start claude as service + attach in tmux
-  - Writes `.claude/settings.local.json` with notification hooks
+- `@dev REPO [BRANCH [BASE]]` — create worktree + start claude + shell + attach
+  - Calls `@install-hooks` to ensure global hooks are present
   - Uses `--append-system-prompt` for background agent instructions
   - `CLAUDE_BIN` env var overrides claude binary (for testing)
+- `@install-hooks` — merge srcery notification hooks into `~/.claude/settings.json` (idempotent)
 - `@wt-create REPO [BRANCH [BASE]]` — create worktree (BRANCH = new branch name, BASE = start point)
-- `@wt-list [REPO]` — list worktrees, optionally filtered
-- `@wt-remove NAME` — stop services + remove worktree
+- `@wt-list [REPO]` — list worktrees with pane commands and status
+- `@ps [FILTER]` — detailed pane view: full command strings, grouped by worktree, nested under window names
+- `@wt-remove NAME` — kill tmux windows + remove worktree
 - `@wt-clear` — remove all worktrees (y/n confirmation)
-- `@svc-start WT_PATH NAME CMD...` — start CMD in tmux window, returns window ID (`@N`)
-- `@svc-stop WINDOW_ID` — kill tmux window by ID (`@N`), cleans up status file
-- `@svc-list [-w PAT] [-n PAT]` — list services; `-w` filters by worktree, `-n` by name
 - `@shell WT_NAME` — start a shell in a worktree + attach
 - `@attach [TARGET]` — attach to tmux (no arg=master, `<wt>`=ephemeral worktree session, `@<name>`=ephemeral name session)
 - `@help` — print command reference
 
-# tmux service architecture
+# tmux architecture
 
-Services are tmux windows. Worktree association derived from `#{pane_current_path}` at query time.
+All windows live on the srcery master session. No service abstraction — tmux is used directly.
 
-- Master session `srcery` — all service windows
-- Window names = just the service name: `claude`, `run`, `shell`, `shell-2`
+- `srcery_new_window NAME PATH [CMD...]` — exported helper: ensures session, creates window, prints window ID
+- Master session `srcery` — all windows
+- Window names = descriptive: `claude`, `run`, `shell`, `storybook`
 - Duplicate names allowed across worktrees (same name + different CWD)
-- Windows targeted by tmux window ID (`@0`, `@1`, etc.) — always unambiguous
-- No eager linked sessions — `@attach` creates ephemeral filtered sessions on demand
+- Worktree association: `basename(#{pane_current_path})` = wt_name
+- `@attach` creates ephemeral filtered sessions on demand
   - `srcery/<wt>` with `destroy-unattached on` — auto-cleaned on detach
   - `srcery/@<name>` with `destroy-unattached on`
-- Worktree association: `basename(#{pane_current_path})` = wt_name
 - All path comparisons use `pwd -P` (macOS `/tmp` → `/private/tmp`)
-- `remain-on-exit on` globally on srcery tmux server — dead services stay inspectable
+- `remain-on-exit on` globally on srcery tmux server — dead windows stay inspectable
 - Dedicated tmux socket: `SRCERY_TMUX_SOCKET` (defaults to `srcery`, tests use `srcery-test`)
 - `srcery_tmux` wrapper always uses `-L $SRCERY_TMUX_SOCKET`
-- Attach: `@attach` (or raw: `tmux -L srcery attach -t srcery`)
 
 # Claude Code notification hooks
 
-`@dev` wires Claude Code hooks via `.claude/settings.local.json` in the worktree:
-- `Notification` (idle_prompt, permission_prompt) → writes status to `data/status/`, sends macOS notification (osascript) or terminal bell fallback
+Hooks are installed globally in `~/.claude/settings.json` via `@install-hooks`.
+`srcery-notify` is self-discovering — it checks `$TMUX` and `$TMUX_PANE` to determine context:
+- Bail if not in tmux, or wrong socket, or CWD isn't a managed worktree
+- `Notification` (idle_prompt, permission_prompt) → writes status to `data/status/<wt>/%<pane_id>`, sends macOS notification
 - `UserPromptSubmit` → clears status file
-- `@svc-list` and `@wt-list` show these statuses (idle, attention) instead of "running"
-- `SRCERY_SVC_WINDOW` env var tells the hook which status file to write
+- `@wt-list` shows these statuses (idle, attention) next to pane commands
 
-# Repo hooks
+# Hooks
 
-`@wt-create` checks for hooks in `hooks/by-repo/<repo>/` first, falls back to make targets:
-- `hooks/by-repo/<repo>/init` — setup script, receives `$wt_path` as `$1`
-- `hooks/by-repo/<repo>/run` — long-running service, receives `$wt_path` as `$1` (run via `@svc-start`)
-- Fallback: `make wt_init` / `make wt_run` targets in the repo Makefile
+`@wt-create` runs hooks in order: global init → repo init → global run → repo run.
+- `hooks/global/{init,run}` — optional, always run
+- `hooks/by-repo/<repo>/{init,run}` — per-repo, take `$wt_path` as `$1`
+- Fallback for repo hooks: `make wt_init` / `make wt_run` targets in the repo Makefile
+- Run hooks use `srcery_new_window` to start tmux windows
 
 # Shell style
 
@@ -97,7 +98,7 @@ Services are tmux windows. Worktree association derived from `#{pane_current_pat
 - `make check_lint` — shellcheck all `cmd/`, `lib/`, `hooks/`, and `completions/completers/` scripts (CI check)
 - `make lint` — shellcheck + auto-apply fixes
 - `make completions` — regenerate zsh + fish wrappers from completers
-- `make test` — run tests (`test/test-svc.sh`); operates entirely in tmpdir
+- `make test` — run tests (`test/test-tmux.sh`); operates entirely in tmpdir
 
 # Nix
 
@@ -108,8 +109,7 @@ Optional. Flake provides a nixpkgs pin and dev shell. `nix develop` or direnv.
 
 Completion logic lives in `completions/completers/` (bash scripts). Run
 `make completions` (or `completions/generate`) to regenerate `zsh/` and `fish/`
-wrappers. Both generated dirs are committed. `@svc-list` is a special case
-(flags only) — emitted directly by the generator.
+wrappers. Both generated dirs are committed.
 
 **zsh**: direnv exports `EXTRA_FPATH`; user adds a precmd hook to `.zshrc`
 that prepends it to `fpath` + runs `compinit`.

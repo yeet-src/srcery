@@ -36,18 +36,5 @@ complete -c ${cmd} -f -a '(${func_name})'
 EOF
 done
 
-# Special case: @svc-list (flags only, no completer)
-cat > "$zsh_dir/_@svc-list" <<'EOF'
-#compdef @svc-list
-_arguments \
-    '-w[filter by worktree]:pattern:' \
-    '-n[filter by name]:pattern:'
-EOF
-
-cat > "$fish_dir/@svc-list.fish" <<'EOF'
-complete -c @svc-list -s w -d 'filter by worktree' -r
-complete -c @svc-list -s n -d 'filter by name' -r
-EOF
-
 echo "Generated $(find "$zsh_dir" -maxdepth 1 -type f | wc -l | tr -d ' ') zsh completions in $zsh_dir"
 echo "Generated $(find "$fish_dir" -maxdepth 1 -type f | wc -l | tr -d ' ') fish completions in $fish_dir"

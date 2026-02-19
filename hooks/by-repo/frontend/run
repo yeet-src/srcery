@@ -1,8 +1,9 @@
 #!/usr/bin/env srcery-bash
 
 wt_path="${1:?usage: run WT_PATH}"
+abs_wt_path=$(cd "$wt_path" && pwd -P)
+
+srcery_new_window storybook "$abs_wt_path" make -C "$wt_path" storybook >/dev/null
+
 cd "$wt_path" || exit
-
-@svc-start "$wt_path" storybook make -C "$wt_path" storybook >/dev/null
-
 exec npm run dev

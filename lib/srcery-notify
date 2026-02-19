@@ -1,6 +1,24 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Self-discovering Claude Code hook — safe no-op outside srcery tmux or non-worktree CWD.
+
+# Must be running inside tmux on the srcery socket
+[[ -n "${TMUX:-}" ]] || exit 0
+[[ "$TMUX" == *"${SRCERY_TMUX_SOCKET:-srcery}"* ]] || exit 0
+[[ -n "${TMUX_PANE:-}" ]] || exit 0
+
+# Derive worktree name from pane CWD
+pane_cwd=$(tmux -L "${SRCERY_TMUX_SOCKET:-srcery}" display-message -t "$TMUX_PANE" -p '#{pane_current_path}')
+wt_name=$(basename "$pane_cwd")
+
+# Must be a managed worktree
+data_dir="${SRCERY_DATA:-${SRCERY_ROOT:?}/data}"
+[[ -d "$data_dir/worktrees/$wt_name" ]] || exit 0
+
+# Status file keyed by pane ID (e.g. %0, %1)
+status_file="$data_dir/status/$wt_name/$TMUX_PANE"
+
 input=$(cat)
 
 # Simple JSON string extraction (no jq dependency)
@@ -10,13 +28,11 @@ json_str() {
 }
 
 event=$(json_str hook_event_name)
-notification_type=$(json_str notification_type)
 message=$(json_str message)
-
-status_file="${SRCERY_DATA:?}/status/${SRCERY_SVC_WINDOW:?}"
 
 case "$event" in
 	Notification)
+		notification_type=$(json_str notification_type)
 		case "$notification_type" in
 			idle_prompt)       status="idle" ;;
 			permission_prompt) status="attention" ;;

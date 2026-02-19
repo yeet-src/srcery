@@ -21,7 +21,6 @@ t "wt-list has header"
 assert contains "$list" "NAME"
 
 t "wt-list shows repo and branch columns"
-# tab-separated: NAME\tREPO\tBRANCH\tSERVICES
 row=$(echo "$list" | grep "$wt_name")
 assert contains "$row" "fakerepo"
 
@@ -36,20 +35,19 @@ t "wt-remove removes the worktree"
 assert_not test -d "$wt_path"
 
 # ===================
-echo "--- @wt-remove with sibling services (regression) ---"
-# Bug: [[ test ]] && action in piped while loop returns exit 1 when
-# no windows match, killing the script via set -e + pipefail.
+echo "--- @wt-remove with sibling windows (regression) ---"
 
 setup_repo regr_repo
 
-wt_a=$(@wt-create regr_repo regr-has-svc)
-wt_b=$(@wt-create regr_repo regr-no-svc)
+wt_a=$(@wt-create regr_repo regr-has-win)
+wt_b=$(@wt-create regr_repo regr-no-win)
 name_a=$(basename "$wt_a")
 name_b=$(basename "$wt_b")
 
-@svc-start "$wt_a" some-svc sleep 999 >/dev/null
+abs_wt_a=$(cd "$wt_a" && pwd -P)
+srcery_new_window some-svc "$abs_wt_a" sleep 999 >/dev/null
 
-t "wt-remove succeeds when sibling worktree has services"
+t "wt-remove succeeds when sibling worktree has windows"
 @wt-remove "$name_b"
 assert_not test -d "$wt_b"
 
@@ -128,23 +126,21 @@ t "wt-create runs wt_init"
 wt_path=$(@wt-create hookrepo)
 assert test -f "$wt_path/.initialized"
 
-t "wt-create starts wt_run as a service"
+t "wt-create starts wt_run as a tmux window"
 wt_name=$(basename "$wt_path")
-list=$(@svc-list -w "$wt_name")
-assert contains "$list" "running"
+wins=$(tmux -L srcery-test list-windows -t "=srcery" -F '#{window_name}' 2>/dev/null || true)
+assert contains "$wins" "run"
 
-t "wt-create uses 'run' as service name"
-assert contains "$list" "run"
-
-t "wt-list shows running services"
+t "wt-list shows running windows"
 wt_list=$(@wt-list)
 wt_row=$(echo "$wt_list" | grep "$wt_name")
-assert contains "$wt_row" "run"
+# pane_current_command varies by platform (e.g. "make" or "coreutils" on nix)
+assert_not contains "$wt_row" "  -"
 
-t "wt-remove stops the service"
+t "wt-remove kills the windows"
 @wt-remove "$wt_name"
 sleep 0.2
-list=$(@svc-list 2>/dev/null || true)
-assert_not contains "${list:-}" "$wt_name"
+wins=$(tmux -L srcery-test list-windows -t "=srcery" -F '#{window_name} #{pane_current_path}' 2>/dev/null || true)
+assert_not contains "${wins:-}" "$wt_name"
 
 report

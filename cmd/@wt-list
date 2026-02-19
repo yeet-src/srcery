@@ -4,14 +4,14 @@
 
 filter="${1:-}"
 
-# collect service windows if tmux server is running
-svc_windows=""
+# collect pane info if tmux server is running
+pane_info=""
 if srcery_tmux has-session -t "=srcery" 2>/dev/null; then
-	svc_windows=$(srcery_tmux list-windows -t "=srcery" -F '#{window_name} #{pane_current_path} #{pane_dead}')
+	pane_info=$(srcery_tmux list-panes -s -t "=srcery" -F '#{pane_current_command} #{pane_current_path} #{pane_dead} #{pane_id}')
 fi
 
 {
-printf "%s\t%s\t%s\t%s\n" NAME REPO BRANCH SERVICES
+printf "%s\t%s\t%s\t%s\n" NAME REPO BRANCH PANES
 
 for wt in "$SRCERY_DATA"/worktrees/*/; do
 	[[ -d "$wt" ]] || continue
@@ -34,22 +34,22 @@ for wt in "$SRCERY_DATA"/worktrees/*/; do
 	# resolve to absolute for matching (pwd -P to match tmux's pane_current_path)
 	abs_wt_path=$(cd "$wt" && pwd -P)
 
-	# gather services for this worktree (matched by CWD)
-	svcs=""
-	if [[ -n "$svc_windows" ]]; then
-		while read -r wname cwd dead; do
+	# gather panes for this worktree (matched by CWD)
+	panes=""
+	if [[ -n "$pane_info" ]]; then
+		while read -r pcmd cwd dead pane_id; do
 			[[ "$cwd" == "$abs_wt_path" || "$cwd" == "$abs_wt_path/"* ]] || continue
 			if [[ "$dead" != "0" ]]; then
-				svcs="${svcs:+$svcs,}${wname}(dead)"
-			elif [[ -f "$SRCERY_DATA/status/$name/$wname" ]]; then
-				svc_status=$(<"$SRCERY_DATA/status/$name/$wname")
-				svcs="${svcs:+$svcs,}${wname}(${svc_status})"
+				panes="${panes:+$panes,}${pcmd}(dead)"
+			elif [[ -f "$SRCERY_DATA/status/$name/$pane_id" ]]; then
+				pane_status=$(<"$SRCERY_DATA/status/$name/$pane_id")
+				panes="${panes:+$panes,}${pcmd}(${pane_status})"
 			else
-				svcs="${svcs:+$svcs,}$wname"
+				panes="${panes:+$panes,}$pcmd"
 			fi
-		done <<< "$svc_windows"
+		done <<< "$pane_info"
 	fi
 
-	printf "%s\t%s\t%s\t%s\n" "$name" "$repo" "$branch" "${svcs:--}"
+	printf "%s\t%s\t%s\t%s\n" "$name" "$repo" "$branch" "${panes:--}"
 done
 } | column -t -s $'\t'
