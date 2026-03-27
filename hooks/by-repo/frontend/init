@@ -28,4 +28,3 @@ done
 
 DEPLOY_ENV=local ASSETS_ROOT='' ./scripts/setup_build_env.sh
 DEPLOY_ENV=local ASSETS_ROOT='' ./scripts/setup_deploy_env.sh
-DEPLOY_ENV=local ASSETS_ROOT='' ./scripts/fetch_hosted_assets.sh
