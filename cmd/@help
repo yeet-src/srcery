@@ -4,6 +4,9 @@ cat <<'EOF'
 Workflow
   @dev REPO [BRANCH [BASE]]    Create worktree, start claude, attach
 
+  BRANCH  New branch name (random if omitted)
+  BASE    Start point for the new branch (e.g. origin/main, a tag, a SHA)
+
 Worktrees
   @wt-create REPO [BRANCH [BASE]]  Create a worktree for REPO, setup & run
   @wt-list [REPO]       List worktrees, optionally filtered by REPO
