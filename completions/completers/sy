@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Completer for sy: POS WORD...
+# Works outside direnv — resolves SRCERY_ROOT from own location.
+SRCERY_ROOT="$(cd "$(dirname "$0")/../.." && pwd -P)"
+export SRCERY_ROOT
+YEET_SRC_ROOT="$(dirname "$SRCERY_ROOT")"
+export YEET_SRC_ROOT
+
+pos=${1:-0}; shift 2>/dev/null || true
+case $pos in
+    0|1)
+        # List subcommands (cmd/@* minus the @ prefix, excluding srcery-bash)
+        for f in "$SRCERY_ROOT"/cmd/@*; do
+            basename "${f#"$SRCERY_ROOT"/cmd/@}"
+        done
+        ;;
+    *)
+        # Delegate to the subcommand's completer
+        subcmd="${1:-}"
+        shift 2>/dev/null || true
+        completer="$SRCERY_ROOT/completions/completers/@$subcmd"
+        [[ -x "$completer" ]] || exit 0
+        exec "$completer" "$((pos - 1))" "$@"
+        ;;
+esac

@@ -14,6 +14,9 @@ Worktrees
   @wt-clear             Remove all worktrees (with confirmation)
   @ps [FILTER]          Detailed pane view (full commands, grouped by worktree)
 
+Navigation
+  @cd WT_NAME              Print worktree path (use: cd $(@cd NAME))
+
 Sessions
   @shell WT_NAME           Start a shell in a worktree + attach
   @attach                  Attach to all windows

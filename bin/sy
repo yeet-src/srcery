@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SRCERY_ROOT="$(cd "$(dirname "$0")/.." && pwd -P)"
+export SRCERY_ROOT
+YEET_SRC_ROOT="$(dirname "$SRCERY_ROOT")"
+export YEET_SRC_ROOT
+
+cmd="${1:-help}"
+shift 2>/dev/null || true
+
+target="$SRCERY_ROOT/cmd/@$cmd"
+[[ -x "$target" ]] || { echo "sy: unknown command '$cmd'" >&2; exit 1; }
+
+exec "$target" "$@"

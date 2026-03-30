@@ -1,0 +1,8 @@
+#!/usr/bin/env srcery-bash
+
+wt_name="${1:?usage: @cd WT_NAME}"
+wt_path="$SRCERY_DATA/worktrees/$wt_name"
+
+[[ -d "$wt_path" ]] || die "worktree not found: $wt_name"
+
+cd "$wt_path" && pwd -P

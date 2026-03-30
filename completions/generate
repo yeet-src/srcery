@@ -12,11 +12,18 @@ mkdir -p "$zsh_dir" "$fish_dir"
 for completer in "$dir/completers"/*; do
     cmd="$(basename "$completer")"
 
+    # sy completer is self-resolving — use absolute path, not $SRCERY_ROOT
+    if [[ "$cmd" == "sy" ]]; then
+        completer_ref="$dir/completers/$cmd"
+    else
+        completer_ref="\$SRCERY_ROOT/completions/completers/$cmd"
+    fi
+
     # zsh wrapper
     cat > "$zsh_dir/_${cmd}" <<EOF
 #compdef ${cmd}
 local -a candidates
-candidates=(\${(f)"\$("\$SRCERY_ROOT/completions/completers/${cmd}" \$((CURRENT-1)) "\${(@)words[2,-1]}" 2>/dev/null)"})
+candidates=(\${(f)"\$("${completer_ref}" \$((CURRENT-1)) "\${(@)words[2,-1]}" 2>/dev/null)"})
 (( \${#candidates} )) && compadd -a candidates
 EOF
 
@@ -30,7 +37,7 @@ function ${func_name}
     if test -n "(commandline -ct)"
         set pos (math \$pos - 1)
     end
-    command \$SRCERY_ROOT/completions/completers/${cmd} \$pos \$tokens[2..]
+    command ${completer_ref} \$pos \$tokens[2..]
 end
 complete -c ${cmd} -f -a '(${func_name})'
 EOF

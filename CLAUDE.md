@@ -12,6 +12,10 @@ scripts that call into real code in those other repos.
 
 # Layout
 
+- `bin/` — standalone executables (on `PATH` via fish config, not direnv)
+- `bin/sy` — global dispatcher: `sy <cmd>` → `cmd/@<cmd>`, bare `sy` → `@help`
+  - Fish wrapper in `by-machine/yeet-work-macbook` intercepts `sy cd` to change caller's CWD
+  - `completions/completers/sy` — self-resolving completer (works outside direnv)
 - `cmd/` — executable commands, on `PATH` via direnv
 - `cmd/srcery-bash` — shebang target (`#!/usr/bin/env srcery-bash`); `cd`s to
   `$SRCERY_ROOT`, exports shared helpers (`die`, `srcery_tmux`, `srcery_new_window`),
@@ -48,6 +52,7 @@ scripts that call into real code in those other repos.
 - `@ps [FILTER]` — detailed pane view: full command strings, grouped by worktree, nested under window names
 - `@wt-remove NAME` — kill tmux windows + remove worktree
 - `@wt-clear` — remove all worktrees (y/n confirmation)
+- `@cd WT_NAME` — print worktree path (fish `sy cd` does actual cd)
 - `@shell WT_NAME` — start a shell in a worktree + attach
 - `@attach [TARGET]` — attach to tmux (no arg=master, `<wt>`=ephemeral worktree session, `@<name>`=ephemeral name session)
 - `@help` — print command reference

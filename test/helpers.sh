@@ -29,13 +29,13 @@ export -f srcery_tmux
 srcery_new_window() {
 	local name="$1" path="$2"
 	shift 2
-	srcery_tmux has-session -t "=srcery" 2>/dev/null \
-		|| srcery_tmux new-session -d -s srcery -n _placeholder 2>/dev/null \
-		|| true
-	srcery_tmux set-option -gw remain-on-exit on
 	local wid
-	wid=$(srcery_tmux new-window -d -t "=srcery" -n "$name" -c "$path" -P -F '#{window_id}' "$@")
-	srcery_tmux kill-window -t "=srcery:=_placeholder" 2>/dev/null || true
+	if srcery_tmux has-session -t "=srcery" 2>/dev/null; then
+		wid=$(srcery_tmux new-window -d -t "=srcery" -n "$name" -c "$path" -P -F '#{window_id}' "$@")
+	else
+		wid=$(srcery_tmux new-session -d -s srcery -n "$name" -c "$path" -P -F '#{window_id}' "$@")
+	fi
+	srcery_tmux set-option -gw remain-on-exit on
 	echo "$wid"
 }
 export -f srcery_new_window

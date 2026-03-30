@@ -1,4 +1,4 @@
-SHELL_FILES := $(wildcard cmd/*) $(wildcard lib/*) $(wildcard hooks/by-repo/*/*) $(wildcard completions/completers/*) completions/generate
+SHELL_FILES := $(wildcard bin/*) $(wildcard cmd/*) $(wildcard lib/*) $(wildcard hooks/by-repo/*/*) $(wildcard completions/completers/*) completions/generate
 
 .PHONY: lint check_lint test completions
 

@@ -1,0 +1,4 @@
+#compdef sy
+local -a candidates
+candidates=(${(f)"$("/Users/ben/src/yeet/srcery/completions/completers/sy" $((CURRENT-1)) "${(@)words[2,-1]}" 2>/dev/null)"})
+(( ${#candidates} )) && compadd -a candidates
