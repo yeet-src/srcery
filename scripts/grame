@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# "git grep-blame"
+#
+# Usage: grame <pattern> [path|revs] [revs|path]
+# 
+# Examples:
+#   grame CodePattern
+#   grame CodePattern src
+#   grame CodePattern master...
+#   grame CodePattern src HEAD^^^...
+
+pat="$1"
+path="$2";
+revs="$3"
+
+if ! [[ -a $path ]]; then
+	path=$3
+	revs=$2
+fi
+
+[[ -z $path ]] && path=.
+
+DIM=""
+NORMAL=""
+RESET=""
+if [ -t 1 ]; then
+	DIM="\033[2m"
+	NORMAL="\033[0m"
+	RESET="\033[0m"
+fi
+
+prev_sha=""
+git grep -n "$pat" "$path" | while IFS=: read -r file lino match; do
+	match=${match%$'\r'}
+	match=${match//\\n/}
+	sha=$(git blame --porcelain -L "$lino,$lino" $revs "$file" | head -1 | cut -d' ' -f1)
+	msg=$(git show --no-patch --oneline "$sha" | expand | cut -c -60 | tr -d '\n')
+	if [ "$sha" = "$prev_sha" ]; then
+		printf -- "${DIM}%s${RESET}" "$msg"
+	else
+		printf -- "${NORMAL}%s${RESET}" "$msg"
+	fi
+	prev_sha="$sha"
+
+	printf -- $'\t%s:%s' "$file" "$lino"
+	echo
+done | column -t -s $'\t'

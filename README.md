@@ -1,8 +1,14 @@
 # srcery
 
-Orchestrates dependencies and workflows across the yeet-src multi-repo project
-(sibling directories under `yeet/`). Lightweight scripts that call into real
+Experimental dev tools for yeet.
+
+- Tools to orchestrate dependencies and workflows across the yeet-src multi-repo project
+(sibling directories under `yeet/`). Provides lightweight scripts that call into real
 code in those other repos.
+
+- Collects our dev dependencies in flake.nix (this is *very* partial currently)
+
+- Miscellaneous helper scripts in ./scripts/
 
 ## Setup
 
